@@ -2,14 +2,12 @@ use std::io;
 
 fn main() {
     loop {
-        let parsed = get_command();
-        if let Some(command) = parsed {
+        // Per the standard, unrecognized commands are simply ignored
+        if let Some(command) = get_command() {
             match command {
                 Command::UCI => uci(),
                 Command::IsReady => is_ready()
             }
-        } else {
-            println!("unrecognized command");
         }
     }
 }
