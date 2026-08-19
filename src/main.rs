@@ -5,7 +5,8 @@ fn main() {
         let parsed = get_command();
         if let Some(command) = parsed {
             match command {
-                Command::UCI => uci()
+                Command::UCI => uci(),
+                Command::IsReady => is_ready()
             }
         } else {
             println!("unrecognized command");
@@ -14,7 +15,8 @@ fn main() {
 }
 
 enum Command {
-    UCI
+    UCI,
+    IsReady
 }
 
 fn get_command() -> Option<Command> {
@@ -23,6 +25,7 @@ fn get_command() -> Option<Command> {
 
     match command.trim() {
         "uci" => Some(Command::UCI),
+        "isready" => Some(Command::IsReady),
         _ => None
     }
 }
@@ -33,4 +36,8 @@ fn uci() {
     println!("id name {name}");
     println!("id author {author}");
     println!("uciok");
+}
+
+fn is_ready() {
+    println!("readyok");
 }
