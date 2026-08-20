@@ -39,13 +39,13 @@ fn parse_board(fen: &str) -> Option<Board> {
 
     for c in fen.chars() {
         if c.is_numeric() {
-            j += c.to_digit(10).unwrap();
+            j += c.to_digit(10).unwrap() as i32;
         } else if c == '/' {
             i += 1;
             j = 0;
         } else {
             let piece = parse_piece(c)?;
-            board.insert((i, j), piece);
+            board.insert(Position::new(i, j), piece);
             j += 1;
         }
     }
@@ -55,28 +55,28 @@ fn parse_board(fen: &str) -> Option<Board> {
 
 fn parse_piece(fen: char) -> Option<Piece> {
     match fen {
-        'P' => Some(Piece {piece: PieceType::Pawn, color: Color::White}),
-        'N' => Some(Piece {piece: PieceType::Knight, color: Color::White}),
-        'B' => Some(Piece {piece: PieceType::Bishop, color: Color::White}),
-        'R' => Some(Piece {piece: PieceType::Rook, color: Color::White}),
-        'Q' => Some(Piece {piece: PieceType::Queen, color: Color::White}),
-        'K' => Some(Piece {piece: PieceType::King, color: Color::White}),
-        'p' => Some(Piece {piece: PieceType::Pawn, color: Color::Black}),
-        'n' => Some(Piece {piece: PieceType::Knight, color: Color::Black}),
-        'b' => Some(Piece {piece: PieceType::Bishop, color: Color::Black}),
-        'r' => Some(Piece {piece: PieceType::Rook, color: Color::Black}),
-        'q' => Some(Piece {piece: PieceType::Queen, color: Color::Black}),
-        'k' => Some(Piece {piece: PieceType::King, color: Color::Black}),
+        'P' => Some(Piece {t: PieceType::Pawn, color: Color::White}),
+        'N' => Some(Piece {t: PieceType::Knight, color: Color::White}),
+        'B' => Some(Piece {t: PieceType::Bishop, color: Color::White}),
+        'R' => Some(Piece {t: PieceType::Rook, color: Color::White}),
+        'Q' => Some(Piece {t: PieceType::Queen, color: Color::White}),
+        'K' => Some(Piece {t: PieceType::King, color: Color::White}),
+        'p' => Some(Piece {t: PieceType::Pawn, color: Color::Black}),
+        'n' => Some(Piece {t: PieceType::Knight, color: Color::Black}),
+        'b' => Some(Piece {t: PieceType::Bishop, color: Color::Black}),
+        'r' => Some(Piece {t: PieceType::Rook, color: Color::Black}),
+        'q' => Some(Piece {t: PieceType::Queen, color: Color::Black}),
+        'k' => Some(Piece {t: PieceType::King, color: Color::Black}),
         _ => None
     }
 }
 
 fn parse_castling_piece(fen: char) -> Option<Piece> {
     match fen {
-        'Q' => Some(Piece {piece: PieceType::Queen, color: Color::White}),
-        'K' => Some(Piece {piece: PieceType::King, color: Color::White}),
-        'q' => Some(Piece {piece: PieceType::Queen, color: Color::Black}),
-        'k' => Some(Piece {piece: PieceType::King, color: Color::Black}),
+        'Q' => Some(Piece {t: PieceType::Queen, color: Color::White}),
+        'K' => Some(Piece {t: PieceType::King, color: Color::White}),
+        'q' => Some(Piece {t: PieceType::Queen, color: Color::Black}),
+        'k' => Some(Piece {t: PieceType::King, color: Color::Black}),
         _ => None
     }
 }
@@ -99,7 +99,7 @@ fn parse_square(fen: &str) -> Option<Position> {
     };
     let row_char = fen.chars().nth(1).unwrap();
     let row = if row_char.is_numeric() {
-        let value = row_char.to_digit(10).unwrap();
+        let value = row_char.to_digit(10).unwrap() as i32;
         if value == 0 || value > 8 {
             return None;
         }
@@ -108,5 +108,5 @@ fn parse_square(fen: &str) -> Option<Position> {
         return None;
     };
 
-    return Some((row, column))
+    return Some(Position::new(row, column))
 }

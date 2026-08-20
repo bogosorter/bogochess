@@ -11,17 +11,16 @@
 // - Position 6, up to depth 5
 
 
-
 use bogochess::chess::GameState;
 use bogochess::fen;
 
 fn test(position: &str, depth: u32, expected: u32) {
-    let state = fen::parse(position).unwrap();
-    let result = perf(&state, depth);
+    let mut state = fen::parse(position).unwrap();
+    let result = perf(&mut state, depth);
     assert_eq!(result, expected)
 }
 
-fn perf(state: &GameState, depth: u32) -> u32 {
+fn perf(state: &mut GameState, depth: u32) -> u32 {
     if depth == 0 {
         return 1;
     }
