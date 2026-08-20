@@ -1,0 +1,112 @@
+use std::collections::HashMap;
+use crate::chess::*;
+
+fn parse(fen: &str) -> Option<GameState> {
+    let words: Vec<&str> = fen.split_whitespace().collect();
+    if words.len() != 6 {
+        return None
+    }
+
+    let board = parse_board(words[0])?;
+    let active_color = match words[1] {
+        "w" => Color::White,
+        "b" => Color::Black,
+        _ => return None
+    };
+    let castlings: Vec<Piece> = match words[2] {
+        "-" => Vec::new(),
+        _ => words[2].chars().map(parse_castling_piece).collect::<Option<Vec<Piece>>>()?
+    };
+    let en_passant = match words[3] {
+        "-" => None,
+        _ => Some(parse_square(words[3])?)
+    };
+    let halfmoves = words[4].parse::<u32>().ok()?;
+
+    Some(GameState {
+        board,
+        active_color,
+        castlings,
+        en_passant,
+        halfmoves
+    })
+}
+
+fn parse_board(fen: &str) -> Option<Board> {
+    let mut i = 0;
+    let mut j = 0;
+    let mut board = HashMap::new();
+
+    for c in fen.chars() {
+        if c.is_numeric() {
+            j += c.to_digit(10).unwrap();
+        } else if c == '/' {
+            i += 1;
+            j = 0;
+        } else {
+            let piece = parse_piece(c)?;
+            board.insert((i, j), piece);
+            j += 1;
+        }
+    }
+
+    Some(board)
+}
+
+fn parse_piece(fen: char) -> Option<Piece> {
+    match fen {
+        'P' => Some(Piece {piece: PieceType::Pawn, color: Color::White}),
+        'N' => Some(Piece {piece: PieceType::Knight, color: Color::White}),
+        'B' => Some(Piece {piece: PieceType::Bishop, color: Color::White}),
+        'R' => Some(Piece {piece: PieceType::Rook, color: Color::White}),
+        'Q' => Some(Piece {piece: PieceType::Queen, color: Color::White}),
+        'K' => Some(Piece {piece: PieceType::King, color: Color::White}),
+        'p' => Some(Piece {piece: PieceType::Pawn, color: Color::Black}),
+        'n' => Some(Piece {piece: PieceType::Knight, color: Color::Black}),
+        'b' => Some(Piece {piece: PieceType::Bishop, color: Color::Black}),
+        'r' => Some(Piece {piece: PieceType::Rook, color: Color::Black}),
+        'q' => Some(Piece {piece: PieceType::Queen, color: Color::Black}),
+        'k' => Some(Piece {piece: PieceType::King, color: Color::Black}),
+        _ => None
+    }
+}
+
+fn parse_castling_piece(fen: char) -> Option<Piece> {
+    match fen {
+        'Q' => Some(Piece {piece: PieceType::Queen, color: Color::White}),
+        'K' => Some(Piece {piece: PieceType::King, color: Color::White}),
+        'q' => Some(Piece {piece: PieceType::Queen, color: Color::Black}),
+        'k' => Some(Piece {piece: PieceType::King, color: Color::Black}),
+        _ => None
+    }
+}
+
+fn parse_square(fen: &str) -> Option<Position> {
+    if fen.len() != 2 {
+        return None
+    }
+
+    let column = match fen.chars().nth(0).unwrap() {
+        'a' => 0,
+        'b' => 1,
+        'c' => 2,
+        'd' => 3,
+        'e' => 4,
+        'f' => 5,
+        'g' => 6,
+        'h' => 7,
+        _ => return None
+    };
+    let row_char = fen.chars().nth(1).unwrap();
+    let row = if row_char.is_numeric() {
+        let value = row_char.to_digit(10).unwrap();
+        if value == 0 || value > 8 {
+            return None;
+        }
+        8 - value
+    } else {
+        return None;
+    };
+
+    return Some((row, column))
+}
