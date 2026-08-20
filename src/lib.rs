@@ -1,2 +1,2 @@
-mod chess;
-mod fen;
+pub mod chess;
+pub mod fen;

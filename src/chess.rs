@@ -8,6 +8,20 @@ pub struct GameState {
     pub halfmoves: u32
 }
 
+impl GameState {
+    pub fn moves(&self) -> Vec<Move> {
+        Vec::new()
+    }
+
+    pub fn apply(&self, m: &Move) -> GameState {
+        panic!("do not implemented")
+    }
+
+    pub fn undo(&self, m: &Move) -> GameState {
+        panic!("undo not implemented")
+    }
+}
+
 pub type Position = (u32, u32);
 pub type Board = HashMap<Position, Piece>;
 
@@ -38,4 +52,18 @@ pub struct Castling {
 pub enum CastlingType {
     KingSide,
     QueenSide
+}
+
+pub struct Move {
+    pub t: MoveType,
+    pub origin: Position,
+    pub destination: Position,
+    pub promotion: PieceType
+}
+
+pub enum MoveType {
+    Normal,
+    EnPassant,
+    Castle,
+    Promotion
 }

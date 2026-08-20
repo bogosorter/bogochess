@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::chess::*;
 
-fn parse(fen: &str) -> Option<GameState> {
+pub fn parse(fen: &str) -> Option<GameState> {
     let words: Vec<&str> = fen.split_whitespace().collect();
     if words.len() != 6 {
         return None
