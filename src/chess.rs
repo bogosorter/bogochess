@@ -64,29 +64,48 @@ impl GameState {
                     Position::new(-1, 2)
                 ];
 
-                let destinations = offsets.iter().map(|offset| position + *offset).filter(|destination| {
-                    if !destination.is_valid() {
-                        return false;
-                    }
+                self.offsets_move(position, piece, offsets)
+            },
 
-                    if let Some(other_piece) = self.board.get(destination) {
-                        piece.color != other_piece.color
-                    } else {
-                        true
-                    }
-                });
+            PieceType::King => {
+                let offsets = vec![
+                    Position::new(1, -1),
+                    Position::new(1, 0),
+                    Position::new(1, 1),
+                    Position::new(0, -1),
+                    Position::new(0, 1),
+                    Position::new(-1, -1),
+                    Position::new(-1, 0),
+                    Position::new(-1, 1),
+                ];
 
-                destinations.map(|destination| Move {
-                    t: MoveType::Normal,
-                    origin: position,
-                    destination,
-                    captured: self.board.get(&destination).copied(),
-                    promotion: None
-                }).collect()
+                self.offsets_move(position, piece, offsets)
             },
 
             _ => Vec::new()
         }
+    }
+
+    pub fn offsets_move(&self, position: Position, piece: &Piece, offsets: Vec<Position>) -> Vec<Move> {
+        let destinations = offsets.iter().map(|offset| position + *offset).filter(|destination| {
+            if !destination.is_valid() {
+                return false;
+            }
+
+            if let Some(other_piece) = self.board.get(destination) {
+                piece.color != other_piece.color
+            } else {
+                true
+            }
+        });
+
+        destinations.map(|destination| Move {
+            t: MoveType::Normal,
+            origin: position,
+            destination,
+            captured: self.board.get(&destination).copied(),
+            promotion: None
+        }).collect()
     }
 
     pub fn apply(&mut self, m: &Move) {
