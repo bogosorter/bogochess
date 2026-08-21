@@ -90,6 +90,21 @@ impl GameState {
                 self.sliding_move(position, slides)
             },
 
+            PieceType::Queen => {
+                let slides = vec![
+                    Position::new(1, -1),
+                    Position::new(1, 0),
+                    Position::new(1, 1),
+                    Position::new(0, -1),
+                    Position::new(0, 1),
+                    Position::new(-1, -1),
+                    Position::new(-1, 0),
+                    Position::new(-1, 1),
+                ];
+
+                self.sliding_move(position, slides)
+            },
+
             PieceType::King => {
                 let offsets = vec![
                     Position::new(1, -1),
@@ -103,9 +118,7 @@ impl GameState {
                 ];
 
                 self.offsets_move(position, offsets)
-            },
-
-            _ => Vec::new()
+            }
         }
     }
 
