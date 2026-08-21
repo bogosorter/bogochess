@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Add;
+use std::ops::AddAssign;
 use std::ops::Not;
 
 pub struct GameState {
@@ -64,7 +65,18 @@ impl GameState {
                     Position::new(-1, 2)
                 ];
 
-                self.offsets_move(position, piece, offsets)
+                self.offsets_move(position, offsets)
+            },
+
+            PieceType::Bishop => {
+                let slides = vec![
+                    Position::new(1, -1),
+                    Position::new(1, 1),
+                    Position::new(-1, -1),
+                    Position::new(-1, 1)
+                ];
+
+                self.sliding_move(position, slides)
             },
 
             PieceType::King => {
@@ -79,21 +91,21 @@ impl GameState {
                     Position::new(-1, 1),
                 ];
 
-                self.offsets_move(position, piece, offsets)
+                self.offsets_move(position, offsets)
             },
 
             _ => Vec::new()
         }
     }
 
-    pub fn offsets_move(&self, position: Position, piece: &Piece, offsets: Vec<Position>) -> Vec<Move> {
+    pub fn offsets_move(&self, position: Position, offsets: Vec<Position>) -> Vec<Move> {
         let destinations = offsets.iter().map(|offset| position + *offset).filter(|destination| {
             if !destination.is_valid() {
                 return false;
             }
 
             if let Some(other_piece) = self.board.get(destination) {
-                piece.color != other_piece.color
+                self.active_color != other_piece.color
             } else {
                 true
             }
@@ -106,6 +118,38 @@ impl GameState {
             captured: self.board.get(&destination).copied(),
             promotion: None
         }).collect()
+    }
+
+    pub fn sliding_move(&self, position: Position, slides: Vec<Position>) -> Vec<Move> {
+        slides.iter().map(|&slide| {
+            let mut moves = Vec::new();
+            let offset = slide;
+
+            let mut current = position + offset;
+            while current.is_valid() && !self.board.contains_key(&current) {
+                moves.push(Move {
+                    t: MoveType::Normal,
+                    origin: position,
+                    destination: current,
+                    captured: None,
+                    promotion: None
+                });
+                current += offset;
+            }
+
+            // Another move is still possible, if the piece blocking the movement can be captured
+            if let Some(&captured) = self.board.get(&current) && captured.color != self.active_color {
+                moves.push(Move {
+                    t: MoveType::Normal,
+                    origin: position,
+                    destination: current,
+                    captured: Some(captured),
+                    promotion: None
+                });
+            }
+
+            moves
+        }).flatten().collect()
     }
 
     pub fn apply(&mut self, m: &Move) {
@@ -153,6 +197,13 @@ impl Add for Position {
             row: self.row + other.row,
             column: self.column + other.column
         }
+    }
+}
+
+impl AddAssign for Position {
+    fn add_assign(&mut self, other: Position) {
+        self.row += other.row;
+        self.column += other.column;
     }
 }
 
