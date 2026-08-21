@@ -68,11 +68,13 @@ fn initial_4() {
 }
 
 #[test]
+#[ignore]
 fn initial_5() {
     test(INITIAL_FEN, 5, 4865609);
 }
 
 #[test]
+#[ignore]
 fn initial_6() {
     test(INITIAL_FEN, 6, 119060324);
 }

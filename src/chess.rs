@@ -12,13 +12,13 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn moves(&self) -> Vec<Move> {
-        let pieces = self.board.iter().filter(|piece| piece.1.color == self.active_color);
-        pieces.map(|piece| self.piece_move(*piece.0, piece.1)).flatten().collect()
+    pub fn moves(&mut self) -> Vec<Move> {
+        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.active_color).map(|(pos, piece)| (*pos, *piece)).collect();
+        pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, false)).flatten().collect()
     }
 
-    pub fn piece_move(&self, position: Position, piece: &Piece) -> Vec<Move> {
-        match piece.t {
+    pub fn piece_move(&mut self, position: Position, piece: Piece, in_check_test: bool) -> Vec<Move> {
+        let moves = match piece.t {
             PieceType::Pawn => {
                 let direction = if piece.color == Color::White { -1 } else { 1 };
                 let offset = Position::new(direction, 0);
@@ -135,6 +135,22 @@ impl GameState {
 
                 self.offsets_move(position, offsets)
             }
+        };
+
+        // If any of the subsequent moves may lead to a king capture, we are
+        // placing the king in chess, which is not allowed. To prevent an
+        // infinite recursion, (since the moves needed inside the in_check call
+        // are also calling in_check, we do not perform that check in the
+        // recursive case).
+        if !in_check_test {
+            moves.into_iter().filter(|m| {
+                self.apply(m);
+                let in_check = self.in_check();
+                self.undo(m);
+                !in_check
+            }).collect()
+        } else {
+            moves
         }
     }
 
@@ -190,6 +206,18 @@ impl GameState {
 
             moves
         }).flatten().collect()
+    }
+
+    pub fn in_check(&mut self) -> bool {
+        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.active_color).map(|(pos, piece)| (*pos, *piece)).collect();
+        let next_moves: Vec<Move> = pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, true)).flatten().collect();
+        next_moves.iter().any(|next_move| {
+            if let Some(captured) = next_move.captured {
+                captured.t == PieceType::King
+            } else {
+                false
+            }
+        })
     }
 
     pub fn apply(&mut self, m: &Move) {
@@ -255,7 +283,7 @@ pub struct Piece {
     pub color: Color
 }
 
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum PieceType {
     Pawn,
     Knight,
