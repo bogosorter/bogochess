@@ -24,14 +24,17 @@ impl GameState {
                 let offset = Position::new(direction, 0);
                 let new_position = position + offset;
 
+                let mut moves = Vec::new();
+
+                // Forward and double-square move
                 if !self.board.contains_key(&new_position) {
-                    let mut moves = vec![Move {
+                    moves.push(Move {
                         t: MoveType::Normal,
                         origin: position,
                         destination: new_position,
                         captured: None,
                         promotion: None
-                    }];
+                    });
 
                     // Two-square move is allowed
                     if piece.color == Color::White && position.row == 6 || piece.color == Color::Black && position.row == 1 {
@@ -46,11 +49,24 @@ impl GameState {
                             });
                         }
                     }
-
-                    moves
-                } else {
-                    Vec::new()
                 }
+
+                // Capture
+                let offsets = vec![Position::new(direction, -1), Position::new(direction, 1)];
+                for offset in offsets {
+                    let new_position = position + offset;
+                    if let Some(&captured) = self.board.get(&new_position) && captured.color != self.active_color {
+                        moves.push(Move {
+                            t: MoveType::Normal,
+                            origin: position,
+                            destination: new_position,
+                            captured: Some(captured),
+                            promotion: None
+                        });
+                    }
+                }
+
+                moves
             },
 
             PieceType::Knight => {
