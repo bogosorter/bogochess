@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Add;
+use std::ops::Not;
 
 pub struct GameState {
     pub board: Board,
@@ -23,17 +24,34 @@ impl GameState {
                 let new_position = position + offset;
 
                 if !self.board.contains_key(&new_position) {
-                    vec![Move {
+                    let mut moves = vec![Move {
                         t: MoveType::Normal,
                         origin: position,
                         destination: new_position,
                         captured: None,
                         promotion: None
-                    }]
+                    }];
+
+                    // Two-square move is allowed
+                    if piece.color == Color::White && position.row == 6 || piece.color == Color::Black && position.row == 1 {
+                        let new_position = new_position + offset;
+                        if !self.board.contains_key(&new_position) {
+                            moves.push(Move {
+                                t: MoveType::Normal,
+                                origin: position,
+                                destination: new_position,
+                                captured: None,
+                                promotion: None
+                            });
+                        }
+                    }
+
+                    moves
                 } else {
                     Vec::new()
                 }
             },
+
             PieceType::Knight => {
                 let offsets = vec![
                     Position::new(2, -1),
@@ -66,6 +84,7 @@ impl GameState {
                     promotion: None
                 }).collect()
             },
+
             _ => Vec::new()
         }
     }
@@ -73,6 +92,7 @@ impl GameState {
     pub fn apply(&mut self, m: &Move) {
         let piece = self.board.remove(&m.origin).expect("position should have a piece");
         self.board.insert(m.destination, piece);
+        self.active_color = !self.active_color;
     }
 
     pub fn undo(&mut self, m: &Move) {
@@ -82,6 +102,8 @@ impl GameState {
         if let Some(captured) = m.captured {
             self.board.insert(m.destination, captured);
         }
+
+        self.active_color = !self.active_color;
     }
 }
 
@@ -137,6 +159,17 @@ pub enum PieceType {
 pub enum Color {
     White,
     Black
+}
+
+impl Not for Color {
+    type Output = Self;
+    fn not(self) -> Color {
+        if self == Color::White {
+            Color::Black
+        } else {
+            Color::White
+        }
+    }
 }
 
 pub struct Castling {
