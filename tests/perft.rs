@@ -1,4 +1,6 @@
 // Performs a series of Perft tests
+// Tests with higher depths are ignored by default, run with --include-ignored
+// to also run them.
 // Sources:
 // - https://chessprogramming.org/Perft
 // - https://chessprogramming.org/Perft_Results
@@ -100,11 +102,13 @@ fn kiwipete_3() {
 }
 
 #[test]
+#[ignore]
 fn kiwipete_4() {
     test(KIWIPETE, 4, 4085603);
 }
 
 #[test]
+#[ignore]
 fn kiwipete_5() {
     test(KIWIPETE, 5, 193690690);
 }
@@ -135,11 +139,13 @@ fn position_3_4() {
 }
 
 #[test]
+#[ignore]
 fn position_3_5() {
     test(POSITION_3, 5, 674624);
 }
 
 #[test]
+#[ignore]
 fn position_3_6() {
     test(POSITION_3, 6, 11030083);
 }
@@ -170,6 +176,7 @@ fn position_4_4() {
 }
 
 #[test]
+#[ignore]
 fn position_4_5() {
     test(POSITION_4, 5, 15833292);
 }
@@ -200,6 +207,7 @@ fn position_4_mirrored_4() {
 }
 
 #[test]
+#[ignore]
 fn position_4_mirrored_5() {
     test(POSITION_4_MIRRORED, 5, 15833292);
 }
@@ -225,11 +233,13 @@ fn position_5_3() {
 }
 
 #[test]
+#[ignore]
 fn position_5_4() {
     test(POSITION_5, 4, 2103487);
 }
 
 #[test]
+#[ignore]
 fn position_5_5() {
     test(POSITION_5, 5, 89941194);
 }
@@ -255,11 +265,13 @@ fn position_6_3() {
 }
 
 #[test]
+#[ignore]
 fn position_6_4() {
     test(POSITION_6, 4, 3894594);
 }
 
 #[test]
+#[ignore]
 fn position_6_5() {
     test(POSITION_6, 5, 164075551);
 }
