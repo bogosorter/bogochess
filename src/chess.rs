@@ -33,7 +33,8 @@ impl GameState {
                         origin: position,
                         destination: new_position,
                         captured: None,
-                        promotion: None
+                        promotion: None,
+                        previous_castlings: self.castlings.clone()
                     });
 
                     // Two-square move is allowed
@@ -45,7 +46,8 @@ impl GameState {
                                 origin: position,
                                 destination: new_position,
                                 captured: None,
-                                promotion: None
+                                promotion: None,
+                                previous_castlings: self.castlings.clone()
                             });
                         }
                     }
@@ -61,7 +63,8 @@ impl GameState {
                             origin: position,
                             destination: new_position,
                             captured: Some(captured),
-                            promotion: None
+                            promotion: None,
+                            previous_castlings: self.castlings.clone()
                         });
                     }
                 }
@@ -133,7 +136,65 @@ impl GameState {
                     Position::new(-1, 1),
                 ];
 
-                self.offsets_move(position, offsets)
+                let mut moves = self.offsets_move(position, offsets);
+
+                // TODO: No castling if in check
+                // TODO: No castling if any of the squares the king moves through is under attack
+
+                // White castling queen-side
+                if self.active_color == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
+                    if !self.board.contains_key(&Position::new(7, 1)) && !self.board.contains_key(&Position::new(7, 2)) && !self.board.contains_key(&Position::new(7, 3)) {
+                        moves.push(Move {
+                            t: MoveType::Castle,
+                            origin: position,
+                            destination: Position::new(7, 2),
+                            captured: None,
+                            promotion: None,
+                            previous_castlings: self.castlings.clone()
+                        });
+                    }
+                }
+                // White castling king-side
+                if self.active_color == Color::White && self.castlings.contains(&Piece::new(PieceType::King, Color::White)) {
+                    if !self.board.contains_key(&Position::new(7, 5)) && !self.board.contains_key(&Position::new(7, 6)) {
+                        moves.push(Move {
+                            t: MoveType::Castle,
+                            origin: position,
+                            destination: Position::new(7, 6),
+                            captured: None,
+                            promotion: None,
+                            previous_castlings: self.castlings.clone()
+                        });
+                    }
+                }
+                // Black castling queen-side
+                if self.active_color == Color::Black && self.castlings.contains(&Piece::new(PieceType::Queen, Color::Black)) {
+                    if !self.board.contains_key(&Position::new(0, 1)) && !self.board.contains_key(&Position::new(0, 2)) && !self.board.contains_key(&Position::new(0, 3)) {
+                        moves.push(Move {
+                            t: MoveType::Castle,
+                            origin: position,
+                            destination: Position::new(0, 2),
+                            captured: None,
+                            promotion: None,
+                            previous_castlings: self.castlings.clone()
+                        });
+                    }
+                }
+                // Black castling king-side
+                if self.active_color == Color::Black && self.castlings.contains(&Piece::new(PieceType::King, Color::Black)) {
+                    if !self.board.contains_key(&Position::new(0, 5)) && !self.board.contains_key(&Position::new(0, 6)) {
+                        moves.push(Move {
+                            t: MoveType::Castle,
+                            origin: position,
+                            destination: Position::new(0, 6),
+                            captured: None,
+                            promotion: None,
+                            previous_castlings: self.castlings.clone()
+                        });
+                    }
+                }
+
+                moves
             }
         };
 
@@ -172,7 +233,8 @@ impl GameState {
             origin: position,
             destination,
             captured: self.board.get(&destination).copied(),
-            promotion: None
+            promotion: None,
+            previous_castlings: self.castlings.clone()
         }).collect()
     }
 
@@ -188,7 +250,8 @@ impl GameState {
                     origin: position,
                     destination: current,
                     captured: None,
-                    promotion: None
+                    promotion: None,
+                    previous_castlings: self.castlings.clone()
                 });
                 current += offset;
             }
@@ -200,7 +263,8 @@ impl GameState {
                     origin: position,
                     destination: current,
                     captured: Some(captured),
-                    promotion: None
+                    promotion: None,
+                    previous_castlings: self.castlings.clone()
                 });
             }
 
@@ -223,6 +287,63 @@ impl GameState {
     pub fn apply(&mut self, m: &Move) {
         let piece = self.board.remove(&m.origin).expect("position should have a piece");
         self.board.insert(m.destination, piece);
+
+        // If this is a castle, move the rook too
+        if m.t == MoveType::Castle {
+            if self.active_color == Color::White {
+                // White queen-side
+                if m.destination == Position::new(7, 2) {
+                    let rook = self.board.remove(&Position::new(7, 0)).expect("position should have a rook");
+                    self.board.insert(Position::new(7, 3), rook);
+                }
+                // White king-side
+                else {
+                    let rook = self.board.remove(&Position::new(7, 7)).expect("position should have a rook");
+                    self.board.insert(Position::new(7, 5), rook);
+                }
+                self.castlings.retain(|piece| piece.color != Color::White);
+            } else {
+                // Black queen-side
+                if m.destination == Position::new(0, 2) {
+                    let rook = self.board.remove(&Position::new(0, 0)).expect("position should have a rook");
+                    self.board.insert(Position::new(0, 3), rook);
+                }
+                // Black king-side
+                else {
+                    let rook = self.board.remove(&Position::new(0, 7)).expect("position should have a rook");
+                    self.board.insert(Position::new(0, 5), rook);
+                }
+                self.castlings.retain(|piece| piece.color != Color::Black);
+            }
+        }
+        // Remove castling abilities if king or rook are moving
+        else {
+            // White king movement
+            if m.origin == Position::new(7, 4) {
+                self.castlings.retain(|piece| piece.color != Color::White);
+            }
+            // Black king movement
+            else if m.origin == Position::new(0, 4) {
+                self.castlings.retain(|piece| piece.color != Color::Black);
+            }
+            // White queen-side rook movement
+            else if m.origin == Position::new(7, 0) {
+                self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::Queen);
+            }
+            // White king-side rook movement
+            else if m.origin == Position::new(7, 7) {
+                self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::King);
+            }
+            // Black queen-side rook movement
+            else if m.origin == Position::new(0, 0) {
+                self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::Queen);
+            }
+            // Black king-side rook movement
+            else if m.origin == Position::new(0, 7) {
+                self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::King);
+            }
+        }
+
         self.active_color = !self.active_color;
     }
 
@@ -235,6 +356,35 @@ impl GameState {
         }
 
         self.active_color = !self.active_color;
+
+        // If this is a castle, move the rook too
+        if m.t == MoveType::Castle {
+            if self.active_color == Color::White {
+                // White queen-side
+                if m.destination == Position::new(7, 2) {
+                    let rook = self.board.remove(&Position::new(7, 3)).expect("position should have a rook");
+                    self.board.insert(Position::new(7, 0), rook);
+                }
+                // White king-side
+                else {
+                    let rook = self.board.remove(&Position::new(7, 5)).expect("position should have a rook");
+                    self.board.insert(Position::new(7, 7), rook);
+                }
+            } else {
+                // Black queen-side
+                if m.destination == Position::new(0, 2) {
+                    let rook = self.board.remove(&Position::new(0, 3)).expect("position should have a rook");
+                    self.board.insert(Position::new(0, 0), rook);
+                }
+                // Black king-side
+                else {
+                    let rook = self.board.remove(&Position::new(0, 5)).expect("position should have a rook");
+                    self.board.insert(Position::new(0, 7), rook);
+                }
+            }
+        }
+
+        self.castlings = m.previous_castlings.clone();
     }
 }
 
@@ -277,10 +427,19 @@ impl AddAssign for Position {
 
 pub type Board = HashMap<Position, Piece>;
 
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Piece {
     pub t: PieceType,
     pub color: Color
+}
+
+impl Piece {
+    pub fn new(t: PieceType, color: Color) -> Piece {
+        Piece {
+            t,
+            color
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -325,9 +484,11 @@ pub struct Move {
     pub origin: Position,
     pub destination: Position,
     pub captured: Option<Piece>,
-    pub promotion: Option<PieceType>
+    pub promotion: Option<PieceType>,
+    pub previous_castlings: Vec<Piece>
 }
 
+#[derive(PartialEq, Eq)]
 pub enum MoveType {
     Normal,
     EnPassant,
