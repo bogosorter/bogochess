@@ -200,7 +200,9 @@ impl GameState {
                         let intermediate_position = Position::new(7, 3);
                         let king = self.board.get(&position).expect("king should be on the square").clone();
                         self.board.insert(intermediate_position, king);
+                        self.active_color = !self.active_color;
                         let in_check = self.in_check();
+                        self.active_color = !self.active_color;
                         self.board.remove(&intermediate_position);
 
                         if !in_check {
@@ -229,7 +231,9 @@ impl GameState {
                         let intermediate_position = Position::new(7, 5);
                         let king = self.board.get(&position).expect("king should be on the square").clone();
                         self.board.insert(intermediate_position, king);
+                        self.active_color = !self.active_color;
                         let in_check = self.in_check();
+                        self.active_color = !self.active_color;
                         self.board.remove(&intermediate_position);
 
                         if !in_check {
@@ -258,7 +262,9 @@ impl GameState {
                         let intermediate_position = Position::new(0, 3);
                         let king = self.board.get(&position).expect("king should be on the square").clone();
                         self.board.insert(intermediate_position, king);
+                        self.active_color = !self.active_color;
                         let in_check = self.in_check();
+                        self.active_color = !self.active_color;
                         self.board.remove(&intermediate_position);
 
                         if !in_check {
@@ -287,7 +293,9 @@ impl GameState {
                         let intermediate_position = Position::new(0, 5);
                         let king = self.board.get(&position).expect("king should be on the square").clone();
                         self.board.insert(intermediate_position, king);
+                        self.active_color = !self.active_color;
                         let in_check = self.in_check();
+                        self.active_color = !self.active_color;
                         self.board.remove(&intermediate_position);
 
                         if !in_check {
