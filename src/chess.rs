@@ -478,6 +478,22 @@ impl GameState {
             self.board.insert(m.destination, Piece::new(promoted_type, piece.color));
         }
 
+        // We have to prevent future castlings if a rook is captured
+        if let Some(captured) = m.captured && captured.t == PieceType::Rook {
+            if m.destination == Position::new(7, 0) {
+                self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::Queen);
+            }
+            if m.destination == Position::new(7, 7) {
+                self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::King);
+            }
+            if m.destination == Position::new(0, 0) {
+                self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::Queen);
+            }
+            if m.destination == Position::new(0, 7) {
+                self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::King);
+            }
+        }
+
         self.active_color = !self.active_color;
     }
 
