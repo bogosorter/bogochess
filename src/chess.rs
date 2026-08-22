@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::Add;
 use std::ops::AddAssign;
 use std::ops::Not;
+use std::fmt::Display;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct GameState {
@@ -550,6 +551,12 @@ impl Position {
     }
 }
 
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", (b'a' + self.column as u8) as char, 8 - self.row)
+    }
+}
+
 impl Add for Position {
     type Output = Self;
     fn add(self, other: Position) -> Position {
@@ -629,6 +636,12 @@ pub struct Move {
     pub promotion: Option<PieceType>,
     pub previous_castlings: Vec<Piece>,
     pub previous_en_passant: Option<Position>
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.origin, self.destination)
+    }
 }
 
 #[derive(PartialEq, Eq)]

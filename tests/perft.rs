@@ -13,27 +13,13 @@
 // - Position 6, up to depth 5
 
 
-use bogochess::chess::GameState;
 use bogochess::fen;
+use bogochess::perft;
 
 fn test(position: &str, depth: u32, expected: u32) {
     let mut state = fen::parse(position).unwrap();
-    let result = perf(&mut state, depth);
+    let result = perft::perft(&mut state, depth);
     assert_eq!(result, expected)
-}
-
-fn perf(state: &mut GameState, depth: u32) -> u32 {
-    if depth == 0 {
-        return 1;
-    }
-
-    let mut result = 0;
-    for m in state.moves() {
-        state.apply(&m);
-        result += perf(state, depth - 1);
-        state.undo(&m);
-    }
-    result
 }
 
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
