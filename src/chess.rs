@@ -29,7 +29,7 @@ impl GameState {
                 // Forward and double-square move
                 if !self.board.contains_key(&new_position) {
                     // Promotion
-                    if piece.color == Color::White && position.row == 0 || piece.color == Color::Black && position.row == 7 {
+                    if piece.color == Color::White && new_position.row == 0 || piece.color == Color::Black && new_position.row == 7 {
                         for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
                             moves.push(Move {
                                 t: MoveType::Normal,
@@ -72,14 +72,28 @@ impl GameState {
                 for offset in offsets {
                     let new_position = position + offset;
                     if let Some(&captured) = self.board.get(&new_position) && captured.color != self.active_color {
-                        moves.push(Move {
-                            t: MoveType::Normal,
-                            origin: position,
-                            destination: new_position,
-                            captured: Some(captured),
-                            promotion: None,
-                            previous_castlings: self.castlings.clone()
-                        });
+                        // Promotion
+                        if piece.color == Color::White && new_position.row == 0 || piece.color == Color::Black && new_position.row == 7 {
+                            for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+                                moves.push(Move {
+                                    t: MoveType::Normal,
+                                    origin: position,
+                                    destination: new_position,
+                                    captured: Some(captured),
+                                    promotion: Some(promoted_type),
+                                    previous_castlings: self.castlings.clone()
+                                });
+                            }
+                        } else {
+                            moves.push(Move {
+                                t: MoveType::Normal,
+                                origin: position,
+                                destination: new_position,
+                                captured: Some(captured),
+                                promotion: None,
+                                previous_castlings: self.castlings.clone()
+                            });
+                        }
                     }
                 }
 
