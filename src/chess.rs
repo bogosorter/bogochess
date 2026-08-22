@@ -37,7 +37,8 @@ impl GameState {
                                 destination: new_position,
                                 captured: None,
                                 promotion: Some(promoted_type),
-                                previous_castlings: self.castlings.clone()
+                                previous_castlings: self.castlings.clone(),
+                                previous_en_passant: self.en_passant
                             });
                         }
                     } else {
@@ -47,7 +48,8 @@ impl GameState {
                             destination: new_position,
                             captured: None,
                             promotion: None,
-                            previous_castlings: self.castlings.clone()
+                            previous_castlings: self.castlings.clone(),
+                            previous_en_passant: self.en_passant
                         });
                     }
 
@@ -56,12 +58,13 @@ impl GameState {
                         let new_position = new_position + offset;
                         if !self.board.contains_key(&new_position) {
                             moves.push(Move {
-                                t: MoveType::Normal,
+                                t: MoveType::TwoSquare,
                                 origin: position,
                                 destination: new_position,
                                 captured: None,
                                 promotion: None,
-                                previous_castlings: self.castlings.clone()
+                                previous_castlings: self.castlings.clone(),
+                                previous_en_passant: self.en_passant
                             });
                         }
                     }
@@ -81,7 +84,8 @@ impl GameState {
                                     destination: new_position,
                                     captured: Some(captured),
                                     promotion: Some(promoted_type),
-                                    previous_castlings: self.castlings.clone()
+                                    previous_castlings: self.castlings.clone(),
+                                    previous_en_passant: self.en_passant
                                 });
                             }
                         } else {
@@ -91,7 +95,23 @@ impl GameState {
                                 destination: new_position,
                                 captured: Some(captured),
                                 promotion: None,
-                                previous_castlings: self.castlings.clone()
+                                previous_castlings: self.castlings.clone(),
+                                previous_en_passant: self.en_passant
+                            });
+                        }
+                    }
+
+                    // En-passant
+                    else {
+                        if let Some(en_passant) = self.en_passant && new_position == en_passant {
+                            moves.push(Move {
+                                t: MoveType::EnPassant,
+                                origin: position,
+                                destination: new_position,
+                                captured: None,
+                                promotion: None,
+                                previous_castlings: self.castlings.clone(),
+                                previous_en_passant: self.en_passant
                             });
                         }
                     }
@@ -178,7 +198,8 @@ impl GameState {
                             destination: Position::new(7, 2),
                             captured: None,
                             promotion: None,
-                            previous_castlings: self.castlings.clone()
+                            previous_castlings: self.castlings.clone(),
+                            previous_en_passant: self.en_passant
                         });
                     }
                 }
@@ -191,7 +212,8 @@ impl GameState {
                             destination: Position::new(7, 6),
                             captured: None,
                             promotion: None,
-                            previous_castlings: self.castlings.clone()
+                            previous_castlings: self.castlings.clone(),
+                            previous_en_passant: self.en_passant
                         });
                     }
                 }
@@ -204,7 +226,8 @@ impl GameState {
                             destination: Position::new(0, 2),
                             captured: None,
                             promotion: None,
-                            previous_castlings: self.castlings.clone()
+                            previous_castlings: self.castlings.clone(),
+                            previous_en_passant: self.en_passant
                         });
                     }
                 }
@@ -217,7 +240,8 @@ impl GameState {
                             destination: Position::new(0, 6),
                             captured: None,
                             promotion: None,
-                            previous_castlings: self.castlings.clone()
+                            previous_castlings: self.castlings.clone(),
+                            previous_en_passant: self.en_passant
                         });
                     }
                 }
@@ -262,7 +286,8 @@ impl GameState {
             destination,
             captured: self.board.get(&destination).copied(),
             promotion: None,
-            previous_castlings: self.castlings.clone()
+            previous_castlings: self.castlings.clone(),
+            previous_en_passant: self.en_passant
         }).collect()
     }
 
@@ -279,7 +304,8 @@ impl GameState {
                     destination: current,
                     captured: None,
                     promotion: None,
-                    previous_castlings: self.castlings.clone()
+                    previous_castlings: self.castlings.clone(),
+                    previous_en_passant: self.en_passant
                 });
                 current += offset;
             }
@@ -292,7 +318,8 @@ impl GameState {
                     destination: current,
                     captured: Some(captured),
                     promotion: None,
-                    previous_castlings: self.castlings.clone()
+                    previous_castlings: self.castlings.clone(),
+                    previous_en_passant: self.en_passant
                 });
             }
 
@@ -315,6 +342,7 @@ impl GameState {
     pub fn apply(&mut self, m: &Move) {
         let piece = self.board.remove(&m.origin).expect("position should have a piece");
         self.board.insert(m.destination, piece);
+        self.en_passant = None;
 
         // If this is a castle, move the rook too
         if m.t == MoveType::Castle {
@@ -343,6 +371,13 @@ impl GameState {
                 }
                 self.castlings.retain(|piece| piece.color != Color::Black);
             }
+        }
+        // The en-passant square has to be set if this is a two-square move
+        else if m.t == MoveType::TwoSquare {
+            self.en_passant = Some(Position::new((m.origin.row + m.destination.row) / 2, m.origin.column));
+        }
+        else if m.t == MoveType::EnPassant {
+            self.board.remove(&Position::new(m.origin.row, m.destination.column));
         }
         // Remove castling abilities if king or rook are moving
         else {
@@ -415,12 +450,17 @@ impl GameState {
                 }
             }
         }
+        // The en-passant square has to be unset if this is a two-square move
+        else if m.t == MoveType::EnPassant {
+            self.board.insert(Position::new(m.origin.row, m.destination.column), Piece::new(PieceType::Pawn, !piece.color));
+        }
 
         if !m.promotion.is_none() {
             self.board.insert(m.destination, Piece::new(PieceType::Pawn, piece.color));
         }
 
         self.castlings = m.previous_castlings.clone();
+        self.en_passant = m.previous_en_passant;
     }
 }
 
@@ -521,12 +561,14 @@ pub struct Move {
     pub destination: Position,
     pub captured: Option<Piece>,
     pub promotion: Option<PieceType>,
-    pub previous_castlings: Vec<Piece>
+    pub previous_castlings: Vec<Piece>,
+    pub previous_en_passant: Option<Position>
 }
 
 #[derive(PartialEq, Eq)]
 pub enum MoveType {
     Normal,
     EnPassant,
-    Castle
+    Castle,
+    TwoSquare
 }
