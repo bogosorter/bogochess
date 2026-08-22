@@ -28,14 +28,28 @@ impl GameState {
 
                 // Forward and double-square move
                 if !self.board.contains_key(&new_position) {
-                    moves.push(Move {
-                        t: MoveType::Normal,
-                        origin: position,
-                        destination: new_position,
-                        captured: None,
-                        promotion: None,
-                        previous_castlings: self.castlings.clone()
-                    });
+                    // Promotion
+                    if piece.color == Color::White && position.row == 0 || piece.color == Color::Black && position.row == 7 {
+                        for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+                            moves.push(Move {
+                                t: MoveType::Normal,
+                                origin: position,
+                                destination: new_position,
+                                captured: None,
+                                promotion: Some(promoted_type),
+                                previous_castlings: self.castlings.clone()
+                            });
+                        }
+                    } else {
+                        moves.push(Move {
+                            t: MoveType::Normal,
+                            origin: position,
+                            destination: new_position,
+                            captured: None,
+                            promotion: None,
+                            previous_castlings: self.castlings.clone()
+                        });
+                    }
 
                     // Two-square move is allowed
                     if piece.color == Color::White && position.row == 6 || piece.color == Color::Black && position.row == 1 {
@@ -344,6 +358,10 @@ impl GameState {
             }
         }
 
+        if let Some(promoted_type) = m.promotion {
+            self.board.insert(m.destination, Piece::new(promoted_type, piece.color));
+        }
+
         self.active_color = !self.active_color;
     }
 
@@ -382,6 +400,10 @@ impl GameState {
                     self.board.insert(Position::new(0, 7), rook);
                 }
             }
+        }
+
+        if !m.promotion.is_none() {
+            self.board.insert(m.destination, Piece::new(PieceType::Pawn, piece.color));
         }
 
         self.castlings = m.previous_castlings.clone();
