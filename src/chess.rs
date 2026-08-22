@@ -186,63 +186,120 @@ impl GameState {
 
                 let mut moves = self.offsets_move(position, offsets);
 
-                // TODO: No castling if in check
-                // TODO: No castling if any of the squares the king moves through is under attack
-
                 // White castling queen-side
                 if self.active_color == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
                     if !self.board.contains_key(&Position::new(7, 1)) && !self.board.contains_key(&Position::new(7, 2)) && !self.board.contains_key(&Position::new(7, 3)) {
-                        moves.push(Move {
-                            t: MoveType::Castle,
-                            origin: position,
-                            destination: Position::new(7, 2),
-                            captured: None,
-                            promotion: None,
-                            previous_castlings: self.castlings.clone(),
-                            previous_en_passant: self.en_passant
-                        });
+                        // To prevent castling while the passing square is in
+                        // check, we insert the king into the intermediate
+                        // square and check if it is in check. The king is not
+                        // removed from the original position to also ensure
+                        // that the king itself is not in check when the move
+                        // initiates.
+
+                        let intermediate_position = Position::new(7, 3);
+                        let king = self.board.get(&position).expect("king should be on the square").clone();
+                        self.board.insert(intermediate_position, king);
+                        let in_check = self.in_check();
+                        self.board.remove(&intermediate_position);
+
+                        if !in_check {
+                            moves.push(Move {
+                                t: MoveType::Castle,
+                                origin: position,
+                                destination: Position::new(7, 2),
+                                captured: None,
+                                promotion: None,
+                                previous_castlings: self.castlings.clone(),
+                                previous_en_passant: self.en_passant
+                            });
+                        }
                     }
                 }
                 // White castling king-side
                 if self.active_color == Color::White && self.castlings.contains(&Piece::new(PieceType::King, Color::White)) {
                     if !self.board.contains_key(&Position::new(7, 5)) && !self.board.contains_key(&Position::new(7, 6)) {
-                        moves.push(Move {
-                            t: MoveType::Castle,
-                            origin: position,
-                            destination: Position::new(7, 6),
-                            captured: None,
-                            promotion: None,
-                            previous_castlings: self.castlings.clone(),
-                            previous_en_passant: self.en_passant
-                        });
+                        // To prevent castling while the passing square is in
+                        // check, we insert the king into the intermediate
+                        // square and check if it is in check. The king is not
+                        // removed from the original position to also ensure
+                        // that the king itself is not in check when the move
+                        // initiates.
+
+                        let intermediate_position = Position::new(7, 5);
+                        let king = self.board.get(&position).expect("king should be on the square").clone();
+                        self.board.insert(intermediate_position, king);
+                        let in_check = self.in_check();
+                        self.board.remove(&intermediate_position);
+
+                        if !in_check {
+                            moves.push(Move {
+                                t: MoveType::Castle,
+                                origin: position,
+                                destination: Position::new(7, 6),
+                                captured: None,
+                                promotion: None,
+                                previous_castlings: self.castlings.clone(),
+                                previous_en_passant: self.en_passant
+                            });
+                        }
                     }
                 }
                 // Black castling queen-side
                 if self.active_color == Color::Black && self.castlings.contains(&Piece::new(PieceType::Queen, Color::Black)) {
                     if !self.board.contains_key(&Position::new(0, 1)) && !self.board.contains_key(&Position::new(0, 2)) && !self.board.contains_key(&Position::new(0, 3)) {
-                        moves.push(Move {
-                            t: MoveType::Castle,
-                            origin: position,
-                            destination: Position::new(0, 2),
-                            captured: None,
-                            promotion: None,
-                            previous_castlings: self.castlings.clone(),
-                            previous_en_passant: self.en_passant
-                        });
+                        // To prevent castling while the passing square is in
+                        // check, we insert the king into the intermediate
+                        // square and check if it is in check. The king is not
+                        // removed from the original position to also ensure
+                        // that the king itself is not in check when the move
+                        // initiates.
+
+                        let intermediate_position = Position::new(0, 3);
+                        let king = self.board.get(&position).expect("king should be on the square").clone();
+                        self.board.insert(intermediate_position, king);
+                        let in_check = self.in_check();
+                        self.board.remove(&intermediate_position);
+
+                        if !in_check {
+                            moves.push(Move {
+                                t: MoveType::Castle,
+                                origin: position,
+                                destination: Position::new(0, 2),
+                                captured: None,
+                                promotion: None,
+                                previous_castlings: self.castlings.clone(),
+                                previous_en_passant: self.en_passant
+                            });
+                        }
                     }
                 }
                 // Black castling king-side
                 if self.active_color == Color::Black && self.castlings.contains(&Piece::new(PieceType::King, Color::Black)) {
                     if !self.board.contains_key(&Position::new(0, 5)) && !self.board.contains_key(&Position::new(0, 6)) {
-                        moves.push(Move {
-                            t: MoveType::Castle,
-                            origin: position,
-                            destination: Position::new(0, 6),
-                            captured: None,
-                            promotion: None,
-                            previous_castlings: self.castlings.clone(),
-                            previous_en_passant: self.en_passant
-                        });
+                        // To prevent castling while the passing square is in
+                        // check, we insert the king into the intermediate
+                        // square and check if it is in check. The king is not
+                        // removed from the original position to also ensure
+                        // that the king itself is not in check when the move
+                        // initiates.
+
+                        let intermediate_position = Position::new(0, 5);
+                        let king = self.board.get(&position).expect("king should be on the square").clone();
+                        self.board.insert(intermediate_position, king);
+                        let in_check = self.in_check();
+                        self.board.remove(&intermediate_position);
+
+                        if !in_check {
+                            moves.push(Move {
+                                t: MoveType::Castle,
+                                origin: position,
+                                destination: Position::new(0, 6),
+                                captured: None,
+                                promotion: None,
+                                previous_castlings: self.castlings.clone(),
+                                previous_en_passant: self.en_passant
+                            });
+                        }
                     }
                 }
 
