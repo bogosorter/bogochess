@@ -3,6 +3,7 @@ use std::ops::Add;
 use std::ops::AddAssign;
 use std::ops::Not;
 
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct GameState {
     pub board: Board,
     pub active_color: Color,
@@ -513,7 +514,7 @@ impl GameState {
         }
 
         if !m.promotion.is_none() {
-            self.board.insert(m.destination, Piece::new(PieceType::Pawn, piece.color));
+            self.board.insert(m.origin, Piece::new(PieceType::Pawn, piece.color));
         }
 
         self.castlings = m.previous_castlings.clone();
@@ -525,7 +526,7 @@ impl GameState {
 // may include negative values. That is explains why the type of each of the
 // coordinates is i32 and why there is an is_valid function
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct Position {
     pub row: i32,
     pub column: i32
@@ -560,7 +561,7 @@ impl AddAssign for Position {
 
 pub type Board = HashMap<Position, Piece>;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Piece {
     pub t: PieceType,
     pub color: Color
@@ -575,7 +576,7 @@ impl Piece {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum PieceType {
     Pawn,
     Knight,
@@ -585,7 +586,7 @@ pub enum PieceType {
     King
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Color {
     White,
     Black
