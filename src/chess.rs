@@ -644,6 +644,7 @@ pub enum CastlingType {
     QueenSide
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct Move {
     pub t: MoveType,
     pub origin: Position,
@@ -660,7 +661,7 @@ impl Display for Move {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum MoveType {
     Normal,
     EnPassant,
