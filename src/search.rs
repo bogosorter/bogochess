@@ -134,5 +134,5 @@ fn eval(state: &mut GameState) -> f32 {
         }
     }).sum();
 
-    score / 39.0
+    score / 40.0
 }

@@ -201,9 +201,7 @@ impl GameState {
                         let intermediate_position = Position::new(7, 3);
                         let king = self.board.get(&position).expect("king should be on the square").clone();
                         self.board.insert(intermediate_position, king);
-                        self.active_color = !self.active_color;
                         let in_check = self.in_check();
-                        self.active_color = !self.active_color;
                         self.board.remove(&intermediate_position);
 
                         if !in_check {
@@ -232,9 +230,7 @@ impl GameState {
                         let intermediate_position = Position::new(7, 5);
                         let king = self.board.get(&position).expect("king should be on the square").clone();
                         self.board.insert(intermediate_position, king);
-                        self.active_color = !self.active_color;
                         let in_check = self.in_check();
-                        self.active_color = !self.active_color;
                         self.board.remove(&intermediate_position);
 
                         if !in_check {
@@ -263,9 +259,7 @@ impl GameState {
                         let intermediate_position = Position::new(0, 3);
                         let king = self.board.get(&position).expect("king should be on the square").clone();
                         self.board.insert(intermediate_position, king);
-                        self.active_color = !self.active_color;
                         let in_check = self.in_check();
-                        self.active_color = !self.active_color;
                         self.board.remove(&intermediate_position);
 
                         if !in_check {
@@ -294,9 +288,7 @@ impl GameState {
                         let intermediate_position = Position::new(0, 5);
                         let king = self.board.get(&position).expect("king should be on the square").clone();
                         self.board.insert(intermediate_position, king);
-                        self.active_color = !self.active_color;
                         let in_check = self.in_check();
-                        self.active_color = !self.active_color;
                         self.board.remove(&intermediate_position);
 
                         if !in_check {
@@ -325,7 +317,9 @@ impl GameState {
         if !in_check_test {
             moves.into_iter().filter(|m| {
                 self.apply(m);
+                self.active_color = !self.active_color;
                 let in_check = self.in_check();
+                self.active_color = !self.active_color;
                 self.undo(m);
                 !in_check
             }).collect()
@@ -395,8 +389,11 @@ impl GameState {
     }
 
     pub fn in_check(&mut self) -> bool {
+        self.active_color = !self.active_color;
         let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.active_color).map(|(pos, piece)| (*pos, *piece)).collect();
         let next_moves: Vec<Move> = pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, true)).flatten().collect();
+        self.active_color = !self.active_color;
+
         next_moves.iter().any(|next_move| {
             if let Some(captured) = next_move.captured {
                 captured.t == PieceType::King
