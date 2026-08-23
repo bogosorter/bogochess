@@ -5,7 +5,7 @@ use crate::chess::Move;
 use std::cmp::Ordering;
 
 pub fn best_move(state: &mut GameState) -> (Option<Move>, f32) {
-    alphabeta(state, 4, f32::MIN, f32::MAX, &mut SearchStatistics::new())
+    alphabeta(state, 5, f32::MIN, f32::MAX, &mut SearchStatistics::new())
 }
 
 pub struct SearchStatistics {
@@ -96,7 +96,7 @@ pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, mut beta: f3
             if minimizing {
                 beta = beta.min(best_score);
             } else {
-                alpha = alpha.min(best_score);
+                alpha = alpha.max(best_score);
             }
         }
     }
