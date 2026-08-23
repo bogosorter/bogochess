@@ -607,6 +607,17 @@ impl Piece {
     }
 }
 
+impl Display for Piece {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let t = self.t.to_string();
+        if self.color == Color::White {
+            write!(f, "{}", t)
+        } else {
+            write!(f, "{}", t.to_uppercase())
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
 pub enum PieceType {
     Pawn,
@@ -615,6 +626,20 @@ pub enum PieceType {
     Rook,
     Queen,
     King
+}
+
+impl Display for PieceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let character = match self {
+            PieceType::Pawn => 'p',
+            PieceType::Knight => 'n',
+            PieceType::Bishop => 'b',
+            PieceType::Rook => 'r',
+            PieceType::Queen => 'q',
+            PieceType::King => 'k',
+        };
+        write!(f, "{}", character)
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
@@ -657,7 +682,11 @@ pub struct Move {
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.origin, self.destination)
+        if self.promotion.is_none() {
+            write!(f, "{}{}", self.origin, self.destination)
+        } else {
+            write!(f, "{}{}{}", self.origin, self.destination, self.promotion.unwrap())
+        }
     }
 }
 
