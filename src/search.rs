@@ -3,9 +3,8 @@ use crate::chess::PieceType;
 use crate::chess::Color;
 use crate::chess::Move;
 
-pub fn best_move(state: &mut GameState) -> Option<Move> {
-    let (m, _) = minimax(state, 2, state.active_color == Color::Black);
-    m
+pub fn best_move(state: &mut GameState) -> (Option<Move>, f32) {
+    minimax(state, 2, state.active_color == Color::Black)
 }
 
 pub fn minimax(state: &mut GameState, depth: u32, minimizing: bool) -> (Option<Move>, f32) {
@@ -46,11 +45,11 @@ pub fn eval(state: &mut GameState) -> f32 {
     let score: f32 = state.board.iter().map(|(_, piece)| {
         let value = match piece.t {
             PieceType::Pawn => 1.0,
-            PieceType::Knight => 2.0,
+            PieceType::Knight => 3.0,
             PieceType::Bishop => 3.0,
             PieceType::Rook => 5.0,
-            PieceType::Queen => 10.0,
-            PieceType::King => 40.0
+            PieceType::Queen => 9.0,
+            PieceType::King => 0.0
         };
 
         if piece.color == Color::White {
@@ -60,5 +59,5 @@ pub fn eval(state: &mut GameState) -> f32 {
         }
     }).sum();
 
-    score / 156.0
+    score / 39.0
 }

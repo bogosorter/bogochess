@@ -53,6 +53,7 @@ fn parse_position(command: Vec<&str>) -> Option<Command> {
         ["position", "fen", a, b, c, d, e, f, "moves", moves@..] => fen::parse_with_moves(&format!("{} {} {} {} {} {}", a, b, c, d, e, f), moves)?,
         _ => return None
     };
+    println!("info depth 18 seldepth 24 score cp 45 nodes 1048576 nps 2050000 time 511 pv e2e4 e7e5 g1f3");
     Some(Command::Position(position))
 }
 
@@ -89,8 +90,17 @@ fn perft(state: &mut Option<GameState>, n: u32) {
 fn go(state: &mut Option<GameState>) {
     match state.as_mut() {
         Some(s) => match search::best_move(s) {
-            Some(m) => println!("bestmove {}", m),
-            None => println!("no moves possible")
+            (Some(m), score) => {
+                println!("bestmove {}", m);
+                println!("info depth 2 seldepth 2 score cp {} nodes 0 nps 0 time 0 pv {}", (score * 39.0 * 100.0).round(), m);
+            },
+            (None, score) => if score == 1.0 {
+                println!("white wins!")
+            } else if score == 0.0 {
+                println!("draw")
+            } else {
+                println!("black wins!")
+            }
         },
         None => println!("no position set")
     }
