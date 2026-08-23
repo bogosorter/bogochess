@@ -18,8 +18,8 @@ use bogochess::search::SearchStatistics;
 
 fn test(position: &str, depth: u32) {
     let mut state = fen::parse(position).unwrap();
-    let left = search::minimax(&mut state, depth, &mut SearchStatistics::new());
-    let right = search::alphabeta(&mut state, depth, f32::MIN, f32::MAX, &mut SearchStatistics::new());
+    let (_, left) = search::minimax(&mut state, depth, &mut SearchStatistics::new());
+    let (_, right) = search::alphabeta(&mut state, depth, f32::MIN, f32::MAX, &mut SearchStatistics::new());
     assert_eq!(left, right);
 }
 
