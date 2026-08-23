@@ -27,6 +27,7 @@ fn benchmark(name: &str, position: &str, depth: u32) {
     println!("{}", name);
     println!("minimax nodes: {}", left_statistics.nodes);
     println!("alphabeta nodes: {}", right_statistics.nodes);
+    println!()
 }
 
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
