@@ -6,3 +6,8 @@ authors = ["bogosorter"]
 
 [dependencies]
 rand = "0.10.2"
+
+[[bench]]
+name = "pruning"
+path = "benches/pruning.rs"
+harness = false
