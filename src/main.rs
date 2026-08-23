@@ -1,6 +1,7 @@
 use bogochess::chess::GameState;
 use bogochess::fen;
 use bogochess::perft;
+use bogochess::search;
 use std::io;
 
 fn main() {
@@ -13,10 +14,8 @@ fn main() {
                 Command::UCI => uci(),
                 Command::IsReady => is_ready(),
                 Command::Position(new_state) => state = Some(new_state),
-                Command::Perft(n) => match state.as_mut() {
-                    Some(s) => { perft::perft(s, n); },
-                    None => println!("no position set")
-                }
+                Command::Perft(n) => perft(&mut state, n),
+                Command::Go => go(&mut state),
             }
         }
     }
@@ -26,7 +25,8 @@ enum Command {
     UCI,
     IsReady,
     Position(GameState),
-    Perft(u32)
+    Perft(u32),
+    Go
 }
 
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -46,11 +46,14 @@ fn get_command() -> Option<Command> {
 }
 
 fn parse_position(command: Vec<&str>) -> Option<Command> {
-    match command.as_slice() {
-        ["position", "startpos"] => Some(Command::Position(fen::parse(INITIAL_FEN)?)),
-        ["position", "fen", fen_string@..] => Some(Command::Position(fen::parse(&fen_string.join(" "))?)),
-        _ => None
-    }
+    let position = match command.as_slice() {
+        ["position", "startpos"] => fen::parse(INITIAL_FEN)?,
+        ["position", "startpos", "moves", moves@..] => fen::parse_with_moves(INITIAL_FEN, moves)?,
+        ["position", "fen", a, b, c, d, e, f] => fen::parse(&format!("{} {} {} {} {} {}", a, b, c, d, e, f))?,
+        ["position", "fen", a, b, c, d, e, f, "moves", moves@..] => fen::parse_with_moves(&format!("{} {} {} {} {} {}", a, b, c, d, e, f), moves)?,
+        _ => return None
+    };
+    Some(Command::Position(position))
 }
 
 fn parse_go(command: Vec<&str>) -> Option<Command> {
@@ -59,6 +62,7 @@ fn parse_go(command: Vec<&str>) -> Option<Command> {
             let n = number.parse::<u32>().ok()?;
             Some(Command::Perft(n))
         }
+        ["go", ..] => Some(Command::Go),
         _ => None
     }
 }
@@ -73,4 +77,21 @@ fn uci() {
 
 fn is_ready() {
     println!("readyok");
+}
+
+fn perft(state: &mut Option<GameState>, n: u32) {
+    match state.as_mut() {
+        Some(s) => { perft::perft(s, n); },
+        None => println!("no position set")
+    }
+}
+
+fn go(state: &mut Option<GameState>) {
+    match state.as_mut() {
+        Some(s) => match search::best_move(s) {
+            Some(m) => println!("bestmove {}", m),
+            None => println!("no moves possible")
+        },
+        None => println!("no position set")
+    }
 }

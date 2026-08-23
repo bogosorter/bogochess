@@ -32,6 +32,17 @@ pub fn parse(fen: &str) -> Option<GameState> {
     })
 }
 
+pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<GameState> {
+    let mut position = parse(fen)?;
+
+    for s in moves {
+        let m = position.moves().into_iter().find(|m| m.to_string() == *s)?;
+        position.apply(&m);
+    }
+
+    Some(position)
+}
+
 fn parse_board(fen: &str) -> Option<Board> {
     let mut i = 0;
     let mut j = 0;
