@@ -592,7 +592,7 @@ impl AddAssign for Position {
 
 pub type Board = HashMap<Position, Piece>;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
 pub struct Piece {
     pub t: PieceType,
     pub color: Color
@@ -607,7 +607,7 @@ impl Piece {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
 pub enum PieceType {
     Pawn,
     Knight,
@@ -617,7 +617,7 @@ pub enum PieceType {
     King
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
 pub enum Color {
     White,
     Black

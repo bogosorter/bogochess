@@ -2,6 +2,7 @@ use crate::chess::GameState;
 use crate::chess::PieceType;
 use crate::chess::Color;
 use crate::chess::Move;
+use std::cmp::Ordering;
 
 pub fn best_move(state: &mut GameState) -> (Option<Move>, f32) {
     alphabeta(state, 4, f32::MIN, f32::MAX, &mut SearchStatistics::new())
@@ -60,7 +61,7 @@ pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, mut beta: f3
     let mut best = None;
     let mut best_score = if minimizing { f32::MAX } else { f32::MIN };
 
-    let moves = state.moves();
+    let mut moves = state.moves();
     if moves.is_empty() {
         statistics.nodes += 1;
         if state.in_check() {
@@ -70,6 +71,7 @@ pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, mut beta: f3
         }
     }
 
+    moves.sort_by(compare_moves);
     for m in moves {
         state.apply(&m);
         statistics.nodes += 1;
@@ -102,7 +104,19 @@ pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, mut beta: f3
     (best, best_score)
 }
 
-pub fn eval(state: &mut GameState) -> f32 {
+fn compare_moves(a: &Move, b: &Move) -> Ordering {
+    if a.promotion != b.promotion {
+        return b.promotion.cmp(&a.promotion);
+    }
+
+    if a.captured != b.captured {
+        return b.captured.cmp(&a.captured);
+    }
+
+    Ordering::Less
+}
+
+fn eval(state: &mut GameState) -> f32 {
     let score: f32 = state.board.iter().map(|(_, piece)| {
         let value = match piece.t {
             PieceType::Pawn => 1.0,
