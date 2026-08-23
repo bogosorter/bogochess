@@ -5,7 +5,7 @@ use crate::chess::Move;
 use std::cmp::Ordering;
 
 pub fn best_move(state: &mut GameState) -> (Option<Move>, f32) {
-    alphabeta(state, 5, f32::MIN, f32::MAX, &mut SearchStatistics::new())
+    iterative_deepening(state, 5, &mut SearchStatistics::new())
 }
 
 pub struct SearchStatistics {
@@ -102,6 +102,20 @@ pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, mut beta: f3
     }
 
     (best, best_score)
+}
+
+fn iterative_deepening(state: &mut GameState, depth: u32, statistics: &mut SearchStatistics) -> (Option<Move>, f32) {
+    let mut m = None;
+    let mut score = f32::MIN;
+
+    for i in 1..depth {
+        (m, score) = alphabeta(state, i, f32::MIN, f32::MAX, statistics);
+        if score.abs() == 1.0 {
+            return (m, score)
+        }
+    }
+
+    (m, score)
 }
 
 fn compare_moves(a: &Move, b: &Move) -> Ordering {
