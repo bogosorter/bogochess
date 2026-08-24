@@ -2,6 +2,7 @@ use bogochess::chess::GameState;
 use bogochess::fen;
 use bogochess::perft;
 use bogochess::search;
+use bogochess::search::SearchOptions;
 use std::io;
 
 fn main() {
@@ -15,7 +16,10 @@ fn main() {
                 Command::IsReady => is_ready(),
                 Command::Position(new_state) => state = Some(new_state),
                 Command::Perft(n) => perft(&mut state, n),
-                Command::Go => go(&mut state),
+                Command::Go(contents) => {
+                    go(&mut state, &contents);
+                },
+                Command::Quit => break,
             }
         }
     }
@@ -26,7 +30,8 @@ enum Command {
     IsReady,
     Position(GameState),
     Perft(u32),
-    Go
+    Go(SearchOptions),
+    Quit
 }
 
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -41,6 +46,7 @@ fn get_command() -> Option<Command> {
         "isready" => Some(Command::IsReady),
         "position" => parse_position(words),
         "go" => parse_go(words),
+        "quit" => Some(Command::Quit),
         _ => None
     }
 }
@@ -63,8 +69,51 @@ fn parse_go(command: Vec<&str>) -> Option<Command> {
             let n = number.parse::<u32>().ok()?;
             Some(Command::Perft(n))
         }
-        ["go", ..] => Some(Command::Go),
+        ["go", ..] => {
+            let mut contents = SearchOptions::new();
+            parse_go_arguments(&command, &mut contents);
+            Some(Command::Go(contents))
+        },
         _ => None
+    }
+}
+
+fn parse_go_arguments(mut arguments: &[&str], result: &mut SearchOptions) {
+    loop {
+        match arguments {
+            ["wtime", time, rest@..] => {
+                if let Ok(t) = time.parse::<u32>() {
+                    result.white_time = Some(t);
+                }
+                arguments = rest;
+            },
+            ["winc", time, rest@..] => {
+                if let Ok(t) = time.parse::<u32>() {
+                    result.white_increment = Some(t);
+                }
+                arguments = rest;
+            },
+            ["btime", time, rest@..] => {
+                if let Ok(t) = time.parse::<u32>() {
+                    result.black_time = Some(t);
+                }
+                arguments = rest;
+            },
+            ["binc", time, rest@..] => {
+                if let Ok(t) = time.parse::<u32>() {
+                    result.black_increment = Some(t);
+                }
+                arguments = rest;
+            },
+            ["movestogo", ms, rest@..] => {
+                if let Ok(n) = ms.parse::<u32>() {
+                    result.moves_to_go = Some(n);
+                }
+                arguments = rest;
+            },
+            [] => { break; }
+            _ => arguments = &arguments[1..]
+        }
     }
 }
 
@@ -87,9 +136,9 @@ fn perft(state: &mut Option<GameState>, n: u32) {
     }
 }
 
-fn go(state: &mut Option<GameState>) {
+fn go(state: &mut Option<GameState>, contents: &SearchOptions) {
     match state.as_mut() {
-        Some(s) => match search::best_move(s) {
+        Some(s) => match search::best_move(s, contents) {
             (Some(m), score) => {
                 println!("bestmove {}", m);
                 println!("info depth 2 seldepth 2 score cp {} nodes 0 nps 0 time 0 pv {}", (score * 39.0 * 100.0).round(), m);
