@@ -16,11 +16,18 @@ use bogochess::fen;
 use bogochess::search;
 use bogochess::search::SearchStatistics;
 
+use approx::assert_relative_eq;
+
+use std::time::Instant;
+use std::time::Duration;
+
 fn test(position: &str, depth: u32) {
     let mut state = fen::parse(position).unwrap();
     let (_, left) = search::minimax(&mut state, depth, &mut SearchStatistics::new());
-    let (_, right) = search::alphabeta(&mut state, depth, f32::MIN, f32::MAX, &mut SearchStatistics::new());
-    assert_eq!(left, right);
+    // 100 years from now (infinite deadline)
+    let infinite_deadline = Instant::now() + Duration::from_secs(365 * 86400 * 100);
+    let (_, right) = search::alphabeta(&mut state, depth, f32::MIN, f32::MAX, &mut SearchStatistics::new(), infinite_deadline).unwrap();
+    assert_relative_eq!(left, right);
 }
 
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

@@ -5,6 +5,7 @@ use crate::chess::Move;
 
 use std::cmp::Ordering;
 use std::time::Instant;
+use std::time::Duration;
 
 pub struct SearchOptions {
     pub white_time: Option<u32>,
@@ -50,140 +51,89 @@ impl SearchStatistics {
 
 
 pub fn minimax(state: &mut GameState, depth: u32, statistics: &mut SearchStatistics) -> (Option<Move>, f32) {
-    let minimizing = state.active_color == Color::Black;
-    let mut best = None;
-    let mut best_score = if minimizing { f32::MAX } else { f32::MIN };
+    statistics.nodes += 1;
 
     let moves = state.moves();
+
+    // Look for check mate or stalemate
     if moves.is_empty() {
-        statistics.nodes += 1;
-        if state.in_check() {
-            return (None, if minimizing { 1.0 } else { -1.0 })
-        } else {
-            return (None, 0.0);
-        }
+        let score = if state.in_check() { -1.0 } else { 0.0 };
+        return (None, score);
     }
 
-    for m in moves {
-        state.apply(&m);
-        statistics.nodes += 1;
-
-        let score;
-        if depth == 1 {
-            score = eval(state);
-        } else {
-            (_, score) = minimax(state, depth - 1, statistics);
-        }
-
-        state.undo(&m);
-
-        if minimizing && score < best_score || !minimizing && score > best_score {
-            best = Some(m);
-            best_score = score;
-        }
+    // End of search, compute score of the current board
+    if depth == 0 {
+        return (None, eval(state));
     }
 
-    (best, best_score)
-}
-
-pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, mut beta: f32, statistics: &mut SearchStatistics) -> (Option<Move>, f32) {
-    let minimizing = state.active_color == Color::Black;
     let mut best = None;
-    let mut best_score = if minimizing { f32::MAX } else { f32::MIN };
-
-    let mut moves = state.moves();
-    if moves.is_empty() {
-        statistics.nodes += 1;
-        if state.in_check() {
-            return (None, if minimizing { 1.0 } else { -1.0 })
-        } else {
-            return (None, 0.0);
-        }
-    }
-
-    moves.sort_by(compare_moves);
+    let mut best_score = f32::MIN;
     for m in moves {
         state.apply(&m);
-        statistics.nodes += 1;
-
-        let score;
-        if depth == 1 {
-            score = eval(state);
-        } else {
-            (_, score) = alphabeta(state, depth - 1, alpha, beta, statistics);
-        }
-
+        let (_, score) = minimax(state, depth - 1, statistics);
         state.undo(&m);
 
-        if minimizing && score < best_score || !minimizing && score > best_score {
+        let score = -score;
+        if score > best_score {
             best = Some(m);
             best_score = score;
-
-            if minimizing && best_score < alpha || !minimizing && best_score > beta {
-                return (best, best_score)
-            }
-
-            if minimizing {
-                beta = beta.min(best_score);
-            } else {
-                alpha = alpha.max(best_score);
-            }
         }
     }
 
     (best, best_score)
 }
 
-pub fn timed_alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, mut beta: f32, statistics: &mut SearchStatistics, elapsed: Instant, available: u32) -> Option<(Option<Move>, f32)> {
-    if elapsed.elapsed().as_millis() > available as u128 {
+pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, beta: f32, statistics: &mut SearchStatistics, deadline: Instant) -> Option<(Option<Move>, f32)> {
+    // End the search earlier if the time has run out
+    if Instant::now() > deadline {
         return None
     }
 
-    let minimizing = state.active_color == Color::Black;
-    let mut best = None;
-    let mut best_score = if minimizing { f32::MAX } else { f32::MIN };
+    statistics.nodes += 1;
 
     let mut moves = state.moves();
+
+    // Look for check-mate or stalemate
     if moves.is_empty() {
-        statistics.nodes += 1;
-        if state.in_check() {
-            return Some((None, if minimizing { 1.0 } else { -1.0 }))
-        } else {
-            return Some((None, 0.0));
-        }
+        let score = if state.in_check() { -1.0 } else { 0.0 };
+        return Some((None, score));
     }
 
+    // End of search, compute score of the current board
+    if depth == 0 {
+        return Some((None, eval(state)));
+    }
+
+    let mut best_move = None;
+    let mut best_score = f32::MIN;
     moves.sort_by(compare_moves);
+
     for m in moves {
         state.apply(&m);
-        statistics.nodes += 1;
-
-        let score;
-        if depth == 1 {
-            score = eval(state);
-        } else {
-            (_, score) = timed_alphabeta(state, depth - 1, alpha, beta, statistics, elapsed, available)?;
-        }
-
+        // We invert alpha and beta since the next player expects scores
+        // according to his perspective
+        let (_, score) = alphabeta(state, depth - 1, -beta, -alpha, statistics, deadline)?;
         state.undo(&m);
 
-        if minimizing && score < best_score || !minimizing && score > best_score {
-            best = Some(m);
+        // Scores are returned from the next player's perspective, so we have to
+        // invert them
+        let score = -score;
+
+        if score > best_score {
+            best_move = Some(m);
             best_score = score;
 
-            if minimizing && best_score < alpha || !minimizing && best_score > beta {
-                return Some((best, best_score))
+            // Return earlier if the score is better than the worst the
+            // minimizing player can do
+            if score >= beta {
+                return Some((best_move, score));
             }
 
-            if minimizing {
-                beta = beta.min(best_score);
-            } else {
-                alpha = alpha.max(best_score);
-            }
+            alpha = alpha.max(score);
         }
     }
 
-    Some((best, best_score))
+    Some((best_move, best_score))
 }
 
 fn iterative_deepening(state: &mut GameState, options: &SearchOptions, statistics: &mut SearchStatistics) -> (Option<Move>, f32) {
@@ -195,8 +145,9 @@ fn iterative_deepening(state: &mut GameState, options: &SearchOptions, statistic
 
     let mut i = 1;
     let start = Instant::now();
+    let deadline = Instant::now() + Duration::from_millis(time_available as u64);
     loop {
-        if let Some((new_m, new_score)) = timed_alphabeta(state, i, f32::MIN, f32::MAX, statistics, start, time_available) {
+        if let Some((new_m, new_score)) = alphabeta(state, i, f32::MIN, f32::MAX, statistics, deadline) {
             m = new_m;
             score = new_score;
             let ns = start.elapsed().as_micros();
@@ -252,5 +203,9 @@ fn eval(state: &mut GameState) -> f32 {
         }
     }).sum();
 
-    score / 40.0
+    if state.active_color == Color::White {
+        score / 40.0
+    } else {
+        -score / 40.0
+    }
 }

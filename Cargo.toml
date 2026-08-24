@@ -5,6 +5,7 @@ edition = "2024"
 authors = ["bogosorter"]
 
 [dependencies]
+approx = "0.5.1"
 rand = "0.10.2"
 
 [[bench]]
