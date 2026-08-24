@@ -27,7 +27,7 @@ fn benchmark(name: &str, position: &str, depth: u32) {
     search::minimax(&mut state, depth, &mut left_statistics);
     // 100 years from now (infinite deadline)
     let infinite_deadline = Instant::now() + Duration::from_secs(365 * 86400 * 100);
-    search::alphabeta(&mut state, depth, f32::MIN, f32::MAX, &mut right_statistics, infinite_deadline).unwrap();
+    search::alphabeta(&mut state, 0, depth, f32::MIN, f32::MAX, &mut right_statistics, infinite_deadline).unwrap();
 
     println!("{}", name);
     println!("minimax nodes: {}", left_statistics.nodes);

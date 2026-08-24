@@ -26,3 +26,4 @@ Additionally, to test and compare different pruning methods, there is a benchmar
 - [Chess Programming Wiki](https://chessprogramming.org/)
   - [Perft](https://chessprogramming.org/Perft)
   - [Perft Results](https://chessprogramming.org/Perft_Results#initial-position)
+  - [Quiescence Search](https://chessprogramming.org/Quiescence_Search)

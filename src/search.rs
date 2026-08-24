@@ -40,12 +40,13 @@ pub fn best_move(state: &mut GameState, options: &SearchOptions) -> (Option<Move
 }
 
 pub struct SearchStatistics {
-    pub nodes: u32
+    pub nodes: u32,
+    pub selective_depth: u32
 }
 
 impl SearchStatistics {
     pub fn new() -> SearchStatistics {
-        SearchStatistics { nodes: 0 }
+        SearchStatistics { nodes: 0, selective_depth: 0 }
     }
 }
 
@@ -83,10 +84,15 @@ pub fn minimax(state: &mut GameState, depth: u32, statistics: &mut SearchStatist
     (best, best_score)
 }
 
-pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, beta: f32, statistics: &mut SearchStatistics, deadline: Instant) -> Option<(Option<Move>, f32)> {
+pub fn alphabeta(state: &mut GameState, depth: u32, max_depth: u32, mut alpha: f32, beta: f32, statistics: &mut SearchStatistics, deadline: Instant) -> Option<(Option<Move>, f32)> {
     // End the search earlier if the time has run out
     if Instant::now() > deadline {
         return None
+    }
+
+    // End of normal search, pass on to quiescent search
+    if depth == max_depth {
+        return Some(quiescent(state, depth, alpha, beta, statistics));
     }
 
     statistics.nodes += 1;
@@ -99,11 +105,6 @@ pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, beta: f32, s
         return Some((None, score));
     }
 
-    // End of search, compute score of the current board
-    if depth == 0 {
-        return Some((None, eval(state)));
-    }
-
     let mut best_move = None;
     let mut best_score = f32::MIN;
     moves.sort_by(compare_moves);
@@ -112,7 +113,7 @@ pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, beta: f32, s
         state.apply(&m);
         // We invert alpha and beta since the next player expects scores
         // according to his perspective
-        let (_, score) = alphabeta(state, depth - 1, -beta, -alpha, statistics, deadline)?;
+        let (_, score) = alphabeta(state, depth + 1, max_depth, -beta, -alpha, statistics, deadline)?;
         state.undo(&m);
 
         // Scores are returned from the next player's perspective, so we have to
@@ -136,6 +137,61 @@ pub fn alphabeta(state: &mut GameState, depth: u32, mut alpha: f32, beta: f32, s
     Some((best_move, best_score))
 }
 
+pub fn quiescent(state: &mut GameState, depth: u32, mut alpha: f32, beta: f32, statistics: &mut SearchStatistics) -> (Option<Move>, f32) {
+    statistics.nodes += 1;
+    statistics.selective_depth = depth;
+
+    let mut moves = state.moves();
+
+    // Look for check-mate or stalemate
+    if moves.is_empty() {
+        let score = if state.in_check() { -1.0 } else { 0.0 };
+        return (None, score);
+    }
+
+    moves = moves.into_iter().filter(|m| !m.captured.is_none() || !m.promotion.is_none()).collect();
+
+    // If there are no moves with captures, the quiescent search should be ended
+    if moves.is_empty() {
+        return (None, eval(state));
+    }
+
+    let mut best_move = None;
+    let mut best_score = eval(state); // stand-pat score
+
+    if best_score >= beta {
+        return (None, best_score);
+    }
+
+    moves.sort_by(compare_moves);
+    for m in moves {
+        state.apply(&m);
+        // We invert alpha and beta since the next player expects scores
+        // according to his perspective
+        let (_, score) = quiescent(state, depth + 1, -beta, -alpha, statistics);
+        state.undo(&m);
+
+        // Scores are returned from the next player's perspective, so we have to
+        // invert them
+        let score = -score;
+
+        if score > best_score {
+            best_move = Some(m);
+            best_score = score;
+
+            // Return earlier if the score is better than the worst the
+            // minimizing player can do
+            if score >= beta {
+                return (best_move, score);
+            }
+
+            alpha = alpha.max(score);
+        }
+    }
+
+    (best_move, best_score)
+}
+
 fn iterative_deepening(state: &mut GameState, options: &SearchOptions, statistics: &mut SearchStatistics) -> (Option<Move>, f32) {
     let mut m = None;
     let mut score = f32::MIN;
@@ -147,12 +203,12 @@ fn iterative_deepening(state: &mut GameState, options: &SearchOptions, statistic
     let start = Instant::now();
     let deadline = Instant::now() + Duration::from_millis(time_available as u64);
     loop {
-        if let Some((new_m, new_score)) = alphabeta(state, i, f32::MIN, f32::MAX, statistics, deadline) {
+        if let Some((new_m, new_score)) = alphabeta(state, 0, i, f32::MIN, f32::MAX, statistics, deadline) {
             m = new_m;
             score = new_score;
             let ns = start.elapsed().as_micros();
             let nps = statistics.nodes * 1000000 / ns as u32;
-            println!("info depth {} seldepth {} score cp {} nodes {} nps {} time {}", i, i, (score * 39.0 * 100.0).round(), statistics.nodes, nps, ns / 1000);
+            println!("info depth {} seldepth {} score cp {} nodes {} nps {} time {}", i, statistics.selective_depth, (score * 39.0 * 100.0).round(), statistics.nodes, nps, ns / 1000);
 
             if score.abs() == 1.0 {
                 return (m, score)
