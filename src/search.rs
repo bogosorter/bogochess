@@ -39,7 +39,7 @@ pub fn best_move(state: &mut GameState, options: &SearchOptions) -> (Option<Move
 }
 
 pub struct SearchStatistics {
-    pub nodes: i32
+    pub nodes: u32
 }
 
 impl SearchStatistics {
@@ -199,6 +199,9 @@ fn iterative_deepening(state: &mut GameState, options: &SearchOptions, statistic
         if let Some((new_m, new_score)) = timed_alphabeta(state, i, f32::MIN, f32::MAX, statistics, start, time_available) {
             m = new_m;
             score = new_score;
+            let ns = start.elapsed().as_micros();
+            let nps = statistics.nodes * 1000000 / ns as u32;
+            println!("info depth {} seldepth {} score cp {} nodes {} nps {} time {}", i, i, (score * 39.0 * 100.0).round(), statistics.nodes, nps, ns / 1000);
 
             if score.abs() == 1.0 {
                 return (m, score)
