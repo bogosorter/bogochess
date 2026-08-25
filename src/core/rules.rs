@@ -2,7 +2,7 @@ use crate::core::model::*;
 
 impl State {
     pub fn moves(&mut self) -> Vec<Move> {
-        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.curent_player).map(|(pos, piece)| (*pos, *piece)).collect();
+        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.current_player).map(|(pos, piece)| (*pos, *piece)).collect();
         pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, false)).flatten().collect()
     }
 
@@ -63,7 +63,7 @@ impl State {
                 let offsets = vec![Position::new(direction, -1), Position::new(direction, 1)];
                 for offset in offsets {
                     let new_position = position + offset;
-                    if let Some(&captured) = self.board.get(&new_position) && captured.color != self.curent_player {
+                    if let Some(&captured) = self.board.get(&new_position) && captured.color != self.current_player {
                         // Promotion
                         if piece.color == Color::White && new_position.row == 0 || piece.color == Color::Black && new_position.row == 7 {
                             for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
@@ -176,7 +176,7 @@ impl State {
                 let mut moves = self.offsets_move(position, offsets);
 
                 // White castling queen-side
-                if self.curent_player == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
+                if self.current_player == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
                     if !self.board.contains_key(&Position::new(7, 1)) && !self.board.contains_key(&Position::new(7, 2)) && !self.board.contains_key(&Position::new(7, 3)) {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -205,7 +205,7 @@ impl State {
                     }
                 }
                 // White castling king-side
-                if self.curent_player == Color::White && self.castlings.contains(&Piece::new(PieceType::King, Color::White)) {
+                if self.current_player == Color::White && self.castlings.contains(&Piece::new(PieceType::King, Color::White)) {
                     if !self.board.contains_key(&Position::new(7, 5)) && !self.board.contains_key(&Position::new(7, 6)) {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -234,7 +234,7 @@ impl State {
                     }
                 }
                 // Black castling queen-side
-                if self.curent_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::Queen, Color::Black)) {
+                if self.current_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::Queen, Color::Black)) {
                     if !self.board.contains_key(&Position::new(0, 1)) && !self.board.contains_key(&Position::new(0, 2)) && !self.board.contains_key(&Position::new(0, 3)) {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -263,7 +263,7 @@ impl State {
                     }
                 }
                 // Black castling king-side
-                if self.curent_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::King, Color::Black)) {
+                if self.current_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::King, Color::Black)) {
                     if !self.board.contains_key(&Position::new(0, 5)) && !self.board.contains_key(&Position::new(0, 6)) {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -304,9 +304,9 @@ impl State {
         if !in_check_test {
             moves.into_iter().filter(|m| {
                 self.apply(m);
-                self.curent_player = !self.curent_player;
+                self.current_player = !self.current_player;
                 let in_check = self.in_check();
-                self.curent_player = !self.curent_player;
+                self.current_player = !self.current_player;
                 self.undo(m);
                 !in_check
             }).collect()
@@ -322,7 +322,7 @@ impl State {
             }
 
             if let Some(other_piece) = self.board.get(destination) {
-                self.curent_player != other_piece.color
+                self.current_player != other_piece.color
             } else {
                 true
             }
@@ -359,7 +359,7 @@ impl State {
             }
 
             // Another move is still possible, if the piece blocking the movement can be captured
-            if let Some(&captured) = self.board.get(&current) && captured.color != self.curent_player {
+            if let Some(&captured) = self.board.get(&current) && captured.color != self.current_player {
                 moves.push(Move {
                     t: MoveType::Normal,
                     origin: position,
@@ -376,10 +376,10 @@ impl State {
     }
 
     pub fn in_check(&mut self) -> bool {
-        self.curent_player = !self.curent_player;
-        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.curent_player).map(|(pos, piece)| (*pos, *piece)).collect();
+        self.current_player = !self.current_player;
+        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.current_player).map(|(pos, piece)| (*pos, *piece)).collect();
         let next_moves: Vec<Move> = pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, true)).flatten().collect();
-        self.curent_player = !self.curent_player;
+        self.current_player = !self.current_player;
 
         next_moves.iter().any(|next_move| {
             if let Some(captured) = next_move.captured {
@@ -397,7 +397,7 @@ impl State {
 
         // If this is a castle, move the rook too
         if m.t == MoveType::Castle {
-            if self.curent_player == Color::White {
+            if self.current_player == Color::White {
                 // White queen-side
                 if m.destination == Position::new(7, 2) {
                     let rook = self.board.remove(&Position::new(7, 0)).expect("position should have a rook");
@@ -478,7 +478,7 @@ impl State {
             }
         }
 
-        self.curent_player = !self.curent_player;
+        self.current_player = !self.current_player;
     }
 
     pub fn undo(&mut self, m: &Move) {
@@ -489,11 +489,11 @@ impl State {
             self.board.insert(m.destination, captured);
         }
 
-        self.curent_player = !self.curent_player;
+        self.current_player = !self.current_player;
 
         // If this is a castle, move the rook too
         if m.t == MoveType::Castle {
-            if self.curent_player == Color::White {
+            if self.current_player == Color::White {
                 // White queen-side
                 if m.destination == Position::new(7, 2) {
                     let rook = self.board.remove(&Position::new(7, 3)).expect("position should have a rook");

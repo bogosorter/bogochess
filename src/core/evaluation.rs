@@ -16,7 +16,7 @@ impl State {
                 }
             }
 
-            if piece.color == self.curent_player { s } else { -s }
+            if piece.color == self.current_player { s } else { -s }
         }).sum();
 
         // We divide by 100 to ensure that checkmate (whose absolute value is 1)

@@ -29,7 +29,7 @@ pub fn parse(fen: &str) -> Option<State> {
 
     Some(State {
         board,
-        curent_player: active_color,
+        current_player: active_color,
         castlings,
         en_passant,
         halfmoves

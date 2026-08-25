@@ -34,7 +34,7 @@ impl State {
 
 fn iterative_deepening(state: &mut State, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
     let start = Instant::now();
-    let search_time = options.search_time(state.curent_player);
+    let search_time = options.search_time(state.current_player);
     let deadline = start + Duration::from_millis(search_time as u64);
 
     let mut i = 1;
