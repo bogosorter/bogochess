@@ -1,4 +1,3 @@
-pub mod chess;
-pub mod fen;
-pub mod perft;
-pub mod search;
+pub mod uci;
+pub mod core;
+pub mod utils;

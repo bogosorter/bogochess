@@ -1,10 +1,12 @@
-use crate::chess::GameState;
+use crate::core::model::State;
 
-pub fn perft(state: &mut GameState, depth: u32) -> u32 {
-    perft_aux(state, depth, 0)
+pub fn perft(state: &mut State, depth: u32) -> u32 {
+    let result = perft_aux(state, depth, 0);
+    println!("nodes searched: {}", result);
+    result
 }
 
-fn perft_aux(state: &mut GameState, depth: u32, current_depth: u32) -> u32 {
+fn perft_aux(state: &mut State, depth: u32, current_depth: u32) -> u32 {
     if current_depth == depth {
         return 1;
     }
@@ -19,10 +21,6 @@ fn perft_aux(state: &mut GameState, depth: u32, current_depth: u32) -> u32 {
         if current_depth == 0 {
             println!("{}: {}", m, count);
         }
-    }
-
-    if current_depth == 0 {
-        println!("nodes searched: {}", result)
     }
 
     result

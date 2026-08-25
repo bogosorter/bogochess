@@ -1,38 +1,27 @@
-// Benchmarks the alpha-beta pruning algorithm by comparing it to vanilla minimax on
-// various positions and depths. Tests with higher depths are ignored by default,
-// run with --include-ignored
-// Sources:
-// - https://chessprogramming.org/Perft_Results
+// Benchmarks the alpha-beta pruning algorithm on various positions and depths.
+// Source: https://chessprogramming.org/Perft_Results
 
-// - Initial position, up to depth 6
-// - Kiwipete, up to depth 5
-// - Position 3, up to depth 6
-// - Position 4, normal and mirrored, up to depth 5
-// - Position 5, up to depth 5
-// - Position 6, up to depth 5
+use bogochess::core::search::{self, SearchStatistics, AlphaBetaOptions};
+use bogochess::uci::fen;
 
+use std::time::{Instant, Duration};
 
-use bogochess::fen;
-use bogochess::search;
-use bogochess::search::SearchStatistics;
-
-use std::time::Instant;
-use std::time::Duration;
 
 fn benchmark(name: &str, position: &str, depth: u32) {
     let mut state = fen::parse(position).unwrap();
 
-    let mut left_statistics = SearchStatistics::new();
-    let mut right_statistics = SearchStatistics::new();
-    search::minimax(&mut state, depth, &mut left_statistics);
-    // 100 years from now (infinite deadline)
-    let infinite_deadline = Instant::now() + Duration::from_secs(365 * 86400 * 100);
-    search::alphabeta(&mut state, 0, depth, f32::MIN, f32::MAX, &mut right_statistics, infinite_deadline).unwrap();
+    let mut statistics = SearchStatistics::new();
 
-    println!("{}", name);
-    println!("minimax nodes: {}", left_statistics.nodes);
-    println!("alphabeta nodes: {}", right_statistics.nodes);
-    println!()
+    let mut options = AlphaBetaOptions {
+        state: &mut state,
+        max_depth: depth,
+        statistics: &mut statistics,
+        // 100 years from now (infinite deadline)
+        deadline: Instant::now() + Duration::from_secs(365 * 86400 * 100)
+    };
+    search::alphabeta(&mut options, 0, f32::MIN, f32::MAX).unwrap();
+
+    println!("{}, {} nodes analized", name, statistics.nodes);
 }
 
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -48,23 +37,39 @@ fn main() {
     benchmark("initial_2", INITIAL_FEN, 2);
     benchmark("initial_3", INITIAL_FEN, 3);
     benchmark("initial_4", INITIAL_FEN, 4);
+    benchmark("initial_5", INITIAL_FEN, 5);
+    benchmark("initial_6", INITIAL_FEN, 6);
     benchmark("kiwipete_1", KIWIPETE, 1);
     benchmark("kiwipete_2", KIWIPETE, 2);
+    benchmark("kiwipete_3", KIWIPETE, 2);
+    benchmark("kiwipete_4", KIWIPETE, 2);
     benchmark("position_3_1", POSITION_3, 1);
     benchmark("position_3_2", POSITION_3, 2);
     benchmark("position_3_3", POSITION_3, 3);
     benchmark("position_3_4", POSITION_3, 4);
     benchmark("position_3_5", POSITION_3, 5);
+    benchmark("position_3_6", POSITION_3, 6);
     benchmark("position_4_1", POSITION_4, 1);
     benchmark("position_4_2", POSITION_4, 2);
     benchmark("position_4_3", POSITION_4, 3);
+    benchmark("position_4_4", POSITION_4, 4);
+    benchmark("position_4_5", POSITION_4, 5);
+    benchmark("position_4_6", POSITION_4, 6);
     benchmark("position_4_mirrored_1", POSITION_4_MIRRORED, 1);
     benchmark("position_4_mirrored_2", POSITION_4_MIRRORED, 2);
     benchmark("position_4_mirrored_3", POSITION_4_MIRRORED, 3);
+    benchmark("position_4_mirrored_4", POSITION_4_MIRRORED, 4);
+    benchmark("position_4_mirrored_5", POSITION_4_MIRRORED, 5);
+    benchmark("position_4_mirrored_6", POSITION_4_MIRRORED, 6);
     benchmark("position_5_1", POSITION_5, 1);
     benchmark("position_5_2", POSITION_5, 2);
     benchmark("position_5_3", POSITION_5, 3);
+    benchmark("position_5_4", POSITION_5, 4);
+    benchmark("position_5_5", POSITION_5, 5);
+    benchmark("position_5_6", POSITION_5, 6);
     benchmark("position_6_1", POSITION_6, 1);
     benchmark("position_6_2", POSITION_6, 2);
     benchmark("position_6_3", POSITION_6, 3);
+    benchmark("position_6_4", POSITION_6, 4);
+    benchmark("position_6_5", POSITION_6, 5);
 }

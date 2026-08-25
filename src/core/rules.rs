@@ -1,21 +1,8 @@
-use std::collections::HashMap;
-use std::ops::Add;
-use std::ops::AddAssign;
-use std::ops::Not;
-use std::fmt::Display;
+use crate::core::model::*;
 
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub struct GameState {
-    pub board: Board,
-    pub active_color: Color,
-    pub castlings: Vec<Piece>,
-    pub en_passant: Option<Position>,
-    pub halfmoves: u32
-}
-
-impl GameState {
+impl State {
     pub fn moves(&mut self) -> Vec<Move> {
-        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.active_color).map(|(pos, piece)| (*pos, *piece)).collect();
+        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.curent_player).map(|(pos, piece)| (*pos, *piece)).collect();
         pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, false)).flatten().collect()
     }
 
@@ -76,7 +63,7 @@ impl GameState {
                 let offsets = vec![Position::new(direction, -1), Position::new(direction, 1)];
                 for offset in offsets {
                     let new_position = position + offset;
-                    if let Some(&captured) = self.board.get(&new_position) && captured.color != self.active_color {
+                    if let Some(&captured) = self.board.get(&new_position) && captured.color != self.curent_player {
                         // Promotion
                         if piece.color == Color::White && new_position.row == 0 || piece.color == Color::Black && new_position.row == 7 {
                             for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
@@ -189,7 +176,7 @@ impl GameState {
                 let mut moves = self.offsets_move(position, offsets);
 
                 // White castling queen-side
-                if self.active_color == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
+                if self.curent_player == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
                     if !self.board.contains_key(&Position::new(7, 1)) && !self.board.contains_key(&Position::new(7, 2)) && !self.board.contains_key(&Position::new(7, 3)) {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -218,7 +205,7 @@ impl GameState {
                     }
                 }
                 // White castling king-side
-                if self.active_color == Color::White && self.castlings.contains(&Piece::new(PieceType::King, Color::White)) {
+                if self.curent_player == Color::White && self.castlings.contains(&Piece::new(PieceType::King, Color::White)) {
                     if !self.board.contains_key(&Position::new(7, 5)) && !self.board.contains_key(&Position::new(7, 6)) {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -247,7 +234,7 @@ impl GameState {
                     }
                 }
                 // Black castling queen-side
-                if self.active_color == Color::Black && self.castlings.contains(&Piece::new(PieceType::Queen, Color::Black)) {
+                if self.curent_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::Queen, Color::Black)) {
                     if !self.board.contains_key(&Position::new(0, 1)) && !self.board.contains_key(&Position::new(0, 2)) && !self.board.contains_key(&Position::new(0, 3)) {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -276,7 +263,7 @@ impl GameState {
                     }
                 }
                 // Black castling king-side
-                if self.active_color == Color::Black && self.castlings.contains(&Piece::new(PieceType::King, Color::Black)) {
+                if self.curent_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::King, Color::Black)) {
                     if !self.board.contains_key(&Position::new(0, 5)) && !self.board.contains_key(&Position::new(0, 6)) {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -317,9 +304,9 @@ impl GameState {
         if !in_check_test {
             moves.into_iter().filter(|m| {
                 self.apply(m);
-                self.active_color = !self.active_color;
+                self.curent_player = !self.curent_player;
                 let in_check = self.in_check();
-                self.active_color = !self.active_color;
+                self.curent_player = !self.curent_player;
                 self.undo(m);
                 !in_check
             }).collect()
@@ -335,7 +322,7 @@ impl GameState {
             }
 
             if let Some(other_piece) = self.board.get(destination) {
-                self.active_color != other_piece.color
+                self.curent_player != other_piece.color
             } else {
                 true
             }
@@ -372,7 +359,7 @@ impl GameState {
             }
 
             // Another move is still possible, if the piece blocking the movement can be captured
-            if let Some(&captured) = self.board.get(&current) && captured.color != self.active_color {
+            if let Some(&captured) = self.board.get(&current) && captured.color != self.curent_player {
                 moves.push(Move {
                     t: MoveType::Normal,
                     origin: position,
@@ -389,10 +376,10 @@ impl GameState {
     }
 
     pub fn in_check(&mut self) -> bool {
-        self.active_color = !self.active_color;
-        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.active_color).map(|(pos, piece)| (*pos, *piece)).collect();
+        self.curent_player = !self.curent_player;
+        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.curent_player).map(|(pos, piece)| (*pos, *piece)).collect();
         let next_moves: Vec<Move> = pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, true)).flatten().collect();
-        self.active_color = !self.active_color;
+        self.curent_player = !self.curent_player;
 
         next_moves.iter().any(|next_move| {
             if let Some(captured) = next_move.captured {
@@ -410,7 +397,7 @@ impl GameState {
 
         // If this is a castle, move the rook too
         if m.t == MoveType::Castle {
-            if self.active_color == Color::White {
+            if self.curent_player == Color::White {
                 // White queen-side
                 if m.destination == Position::new(7, 2) {
                     let rook = self.board.remove(&Position::new(7, 0)).expect("position should have a rook");
@@ -491,7 +478,7 @@ impl GameState {
             }
         }
 
-        self.active_color = !self.active_color;
+        self.curent_player = !self.curent_player;
     }
 
     pub fn undo(&mut self, m: &Move) {
@@ -502,11 +489,11 @@ impl GameState {
             self.board.insert(m.destination, captured);
         }
 
-        self.active_color = !self.active_color;
+        self.curent_player = !self.curent_player;
 
         // If this is a castle, move the rook too
         if m.t == MoveType::Castle {
-            if self.active_color == Color::White {
+            if self.curent_player == Color::White {
                 // White queen-side
                 if m.destination == Position::new(7, 2) {
                     let rook = self.board.remove(&Position::new(7, 3)).expect("position should have a rook");
@@ -542,155 +529,4 @@ impl GameState {
         self.castlings = m.previous_castlings.clone();
         self.en_passant = m.previous_en_passant;
     }
-}
-
-// Position not only represents valid chess positions but also offsets, which
-// may include negative values. That is explains why the type of each of the
-// coordinates is i32 and why there is an is_valid function
-
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub struct Position {
-    pub row: i32,
-    pub column: i32
-}
-
-impl Position {
-    pub fn new(row: i32, column: i32) -> Position {
-        Position {row, column}
-    }
-
-    pub fn is_valid(&self) -> bool {
-        self.row >= 0 && self.row < 8 && self.column >= 0 && self.column < 8
-    }
-}
-
-impl Display for Position {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", (b'a' + self.column as u8) as char, 8 - self.row)
-    }
-}
-
-impl Add for Position {
-    type Output = Self;
-    fn add(self, other: Position) -> Position {
-        Position {
-            row: self.row + other.row,
-            column: self.column + other.column
-        }
-    }
-}
-
-impl AddAssign for Position {
-    fn add_assign(&mut self, other: Position) {
-        self.row += other.row;
-        self.column += other.column;
-    }
-}
-
-pub type Board = HashMap<Position, Piece>;
-
-#[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
-pub struct Piece {
-    pub t: PieceType,
-    pub color: Color
-}
-
-impl Piece {
-    pub fn new(t: PieceType, color: Color) -> Piece {
-        Piece {
-            t,
-            color
-        }
-    }
-}
-
-impl Display for Piece {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let t = self.t.to_string();
-        if self.color == Color::White {
-            write!(f, "{}", t)
-        } else {
-            write!(f, "{}", t.to_uppercase())
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
-pub enum PieceType {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King
-}
-
-impl Display for PieceType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let character = match self {
-            PieceType::Pawn => 'p',
-            PieceType::Knight => 'n',
-            PieceType::Bishop => 'b',
-            PieceType::Rook => 'r',
-            PieceType::Queen => 'q',
-            PieceType::King => 'k',
-        };
-        write!(f, "{}", character)
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
-pub enum Color {
-    White,
-    Black
-}
-
-impl Not for Color {
-    type Output = Self;
-    fn not(self) -> Color {
-        if self == Color::White {
-            Color::Black
-        } else {
-            Color::White
-        }
-    }
-}
-
-pub struct Castling {
-    pub t: CastlingType,
-    pub color: Color
-}
-
-pub enum CastlingType {
-    KingSide,
-    QueenSide
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct Move {
-    pub t: MoveType,
-    pub origin: Position,
-    pub destination: Position,
-    pub captured: Option<Piece>,
-    pub promotion: Option<PieceType>,
-    pub previous_castlings: Vec<Piece>,
-    pub previous_en_passant: Option<Position>
-}
-
-impl Display for Move {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.promotion.is_none() {
-            write!(f, "{}{}", self.origin, self.destination)
-        } else {
-            write!(f, "{}{}{}", self.origin, self.destination, self.promotion.unwrap())
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub enum MoveType {
-    Normal,
-    EnPassant,
-    Castle,
-    TwoSquare
 }

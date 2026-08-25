@@ -3,15 +3,15 @@
 // Sources: https://chessprogramming.org/Perft_Results
 
 
-use bogochess::chess::GameState;
-use bogochess::fen;
+use bogochess::core::model::State;
+use bogochess::uci::fen;
 
 fn test(position: &str, depth: u32) {
     let mut state = fen::parse(position).unwrap();
     idempotent(&mut state, depth);
 }
 
-fn idempotent(state: &mut GameState, depth: u32) {
+fn idempotent(state: &mut State, depth: u32) {
     if depth == 0 {
         return;
     }

@@ -1,7 +1,11 @@
-use std::collections::HashMap;
-use crate::chess::*;
+use crate::core::model::*;
 
-pub fn parse(fen: &str) -> Option<GameState> {
+use std::collections::HashMap;
+use std::fmt::Display;
+
+pub const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+pub fn parse(fen: &str) -> Option<State> {
     let words: Vec<&str> = fen.split_whitespace().collect();
     if words.len() != 6 {
         return None
@@ -23,16 +27,16 @@ pub fn parse(fen: &str) -> Option<GameState> {
     };
     let halfmoves = words[4].parse::<u32>().ok()?;
 
-    Some(GameState {
+    Some(State {
         board,
-        active_color,
+        curent_player: active_color,
         castlings,
         en_passant,
         halfmoves
     })
 }
 
-pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<GameState> {
+pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<State> {
     let mut position = parse(fen)?;
 
     for s in moves {
@@ -120,4 +124,44 @@ fn parse_square(fen: &str) -> Option<Position> {
     };
 
     return Some(Position::new(row, column))
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.promotion {
+            Some(p) => write!(f, "{}{}{}", self.origin, self.destination, p),
+            None => write!(f, "{}{}", self.origin, self.destination)
+        }
+    }
+}
+
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", (b'a' + self.column as u8) as char, 8 - self.row)
+    }
+}
+
+impl Display for Piece {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let t = self.t.to_string();
+
+        match self.color {
+            Color::White => write!(f, "{}", t),
+            Color::Black => write!(f, "{}", t.to_uppercase())
+        }
+    }
+}
+
+impl Display for PieceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let character = match self {
+            PieceType::Pawn => 'p',
+            PieceType::Knight => 'n',
+            PieceType::Bishop => 'b',
+            PieceType::Rook => 'r',
+            PieceType::Queen => 'q',
+            PieceType::King => 'k',
+        };
+        write!(f, "{}", character)
+    }
 }

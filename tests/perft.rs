@@ -5,16 +5,9 @@
 // - https://chessprogramming.org/Perft
 // - https://chessprogramming.org/Perft_Results
 
-// - Initial position, up to depth 6
-// - Kiwipete, up to depth 5
-// - Position 3, up to depth 6
-// - Position 4, normal and mirrored, up to depth 5
-// - Position 5, up to depth 5
-// - Position 6, up to depth 5
+use bogochess::uci::fen;
+use bogochess::utils::perft;
 
-
-use bogochess::fen;
-use bogochess::perft;
 
 fn test(position: &str, depth: u32, expected: u32) {
     let mut state = fen::parse(position).unwrap();
