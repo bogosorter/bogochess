@@ -143,7 +143,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
 
 pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, beta: f32) -> (Option<Move>, f32) {
     options.statistics.nodes += 1;
-    options.statistics.selective_depth = depth;
+    options.statistics.selective_depth =  options.statistics.selective_depth.max(depth);
 
     let mut moves = options.state.moves();
 
