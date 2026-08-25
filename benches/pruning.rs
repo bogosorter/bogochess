@@ -14,7 +14,8 @@ fn benchmark(name: &str, position: &str, depth: u32) {
     let mut statistics = SearchStatistics::new();
     iterative_deepening(&mut state, depth, &mut statistics);
 
-    println!("{}, {} nodes analyzed", name, statistics.nodes);
+    let nps = statistics.nodes * 1000000 / (statistics.search_time as i64 + 1);
+    println!("{}, {} nodes analyzed, {} nps", name, statistics.nodes, nps);
 }
 
 
@@ -23,7 +24,8 @@ fn benchmark(name: &str, position: &str, depth: u32) {
 
 fn iterative_deepening(state: &mut State, depth: u32, statistics: &mut SearchStatistics) {
     // 100 years from now (infinite deadline)
-    let deadline = Instant::now() + Duration::from_secs(365 * 86400 * 100);
+    let start = Instant::now();
+    let deadline = start + Duration::from_secs(365 * 86400 * 100);
     let mut history = [[[0; 64]; 64]; 2];
 
     for i in 1..=depth {
@@ -37,6 +39,8 @@ fn iterative_deepening(state: &mut State, depth: u32, statistics: &mut SearchSta
 
         search::alphabeta(&mut options, 0, f32::MIN, f32::MAX);
     };
+
+    statistics.search_time = start.elapsed().as_micros() as u64;
 }
 
 
