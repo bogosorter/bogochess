@@ -1,6 +1,7 @@
 // Benchmarks the alpha-beta pruning algorithm on various positions and depths.
 // Source: https://chessprogramming.org/Perft_Results
 
+use bogochess::core::model::{State};
 use bogochess::core::search::{self, SearchStatistics, AlphaBetaOptions};
 use bogochess::uci::fen;
 
@@ -11,18 +12,33 @@ fn benchmark(name: &str, position: &str, depth: u32) {
     let mut state = fen::parse(position).unwrap();
 
     let mut statistics = SearchStatistics::new();
+    iterative_deepening(&mut state, depth, &mut statistics);
 
-    let mut options = AlphaBetaOptions {
-        state: &mut state,
-        max_depth: depth,
-        statistics: &mut statistics,
-        // 100 years from now (infinite deadline)
-        deadline: Instant::now() + Duration::from_secs(365 * 86400 * 100)
-    };
-    search::alphabeta(&mut options, 0, f32::MIN, f32::MAX).unwrap();
-
-    println!("{}, {} nodes analized", name, statistics.nodes);
+    println!("{}, {} nodes analyzed", name, statistics.nodes);
 }
+
+
+// Instead of the normal iterative deepening, whose depth is unlimited, we use a
+// limited version to compare different versions.
+
+fn iterative_deepening(state: &mut State, depth: u32, statistics: &mut SearchStatistics) {
+    // 100 years from now (infinite deadline)
+    let deadline = Instant::now() + Duration::from_secs(365 * 86400 * 100);
+    let mut history = [[[0; 64]; 64]; 2];
+
+    for i in 1..=depth {
+        let mut options = AlphaBetaOptions {
+            state: state,
+            max_depth: i,
+            deadline,
+            statistics: statistics,
+            history: &mut history
+        };
+
+        search::alphabeta(&mut options, 0, f32::MIN, f32::MAX);
+    };
+}
+
 
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const KIWIPETE: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";

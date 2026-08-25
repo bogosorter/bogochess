@@ -40,13 +40,15 @@ fn iterative_deepening(state: &mut State, options: &SearchOptions, statistics: &
     let mut i = 1;
     let mut current_move = None;
     let mut current_score = f32::MIN;
+    let mut history = [[[0; 64]; 64]; 2];
 
     while Instant::now() < deadline {
         let mut options = AlphaBetaOptions {
             state: state,
             max_depth: i,
             deadline,
-            statistics: statistics
+            statistics: statistics,
+            history: &mut history
         };
 
         if let Some((new_move, new_score)) = alphabeta(&mut options, 0, f32::MIN, f32::MAX) {
@@ -75,7 +77,8 @@ pub struct AlphaBetaOptions<'a> {
     pub state: &'a mut State,
     pub max_depth: u32,
     pub deadline: Instant,
-    pub statistics: &'a mut SearchStatistics
+    pub statistics: &'a mut SearchStatistics,
+    pub history: &'a mut [[[u32; 64]; 64]; 2]
 }
 
 pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, beta: f32) -> Option<(Option<Move>, f32)> {
@@ -102,7 +105,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
 
     let mut best_move = None;
     let mut best_score = f32::MIN;
-    moves.sort_by(compare_moves);
+    moves.sort_by(|a, b| compare_moves(&options.history[options.state.current_player as usize], a, b));
 
     for m in moves {
         options.state.apply(&m);
@@ -122,6 +125,12 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
             // Return earlier if the score is better than the worst the
             // minimizing player can do
             if score >= beta {
+                // Update the history table according to the history heuristics
+                let update = (options.max_depth - depth + 1) * (options.max_depth - depth + 1);
+                let from = best_move.as_ref().unwrap().origin.index();
+                let to = best_move.as_ref().unwrap().destination.index();
+                options.history[options.state.current_player as usize][from][to] += update;
+
                 return Some((best_move, score));
             }
 
@@ -159,7 +168,8 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
         return (None, best_score);
     }
 
-    moves.sort_by(compare_moves);
+    moves.sort_by(|a, b| compare_moves(&options.history[options.state.current_player as usize], a, b));
+
     for m in moves {
         options.state.apply(&m);
         // We invert alpha and beta since the next player expects scores
@@ -178,6 +188,11 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
             // Return earlier if the score is better than the worst the
             // minimizing player can do
             if score >= beta {
+                // Update the history table according to the history heuristics
+                let from = best_move.as_ref().unwrap().origin.index();
+                let to = best_move.as_ref().unwrap().destination.index();
+                options.history[options.state.current_player as usize][from][to] += 1;
+
                 return (best_move, score);
             }
 
@@ -188,6 +203,18 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
     (best_move, best_score)
 }
 
-fn compare_moves(a: &Move, b: &Move) -> Ordering {
-    a.partial_cmp(b).unwrap_or(Ordering::Less)
+fn compare_moves(history: &[[u32; 64]; 64], a: &Move, b: &Move) -> Ordering {
+    if let Some(ordering) = a.partial_cmp(b) {
+        return ordering;
+    }
+
+    let a_from = a.origin.index();
+    let a_to = a.destination.index();
+    let a_heuristic = history[a_from][a_to];
+
+    let b_from = b.origin.index();
+    let b_to = b.destination.index();
+    let b_heuristic = history[b_from][b_to];
+
+    return b_heuristic.cmp(&a_heuristic);
 }

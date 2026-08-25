@@ -6,6 +6,10 @@ impl Position {
         Position {row, column}
     }
 
+    pub fn index(&self) -> usize {
+        (self.row * 8 + self.column) as usize
+    }
+
     pub fn is_valid(&self) -> bool {
         self.row >= 0 && self.row < 8 && self.column >= 0 && self.column < 8
     }
