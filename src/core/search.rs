@@ -88,6 +88,10 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
         return None
     }
 
+    if options.state.ended {
+        return Some((None, options.state.value()));
+    }
+
     // End of normal search, pass on to quiescent search
     if depth == options.max_depth {
         return Some(quiescent(options, depth, alpha, beta));
@@ -144,6 +148,10 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
 pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, beta: f32) -> (Option<Move>, f32) {
     options.statistics.nodes += 1;
     options.statistics.selective_depth =  options.statistics.selective_depth.max(depth);
+
+    if options.state.ended {
+        return (None, options.state.value());
+    }
 
     let mut moves = options.state.moves();
 

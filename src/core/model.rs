@@ -6,6 +6,7 @@ mod color_impl;
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct State {
     pub board: Board,
+    pub ended: bool,
     pub current_player: Color,
     pub castlings: Vec<Piece>,
     pub en_passant: Option<Position>,

@@ -4,6 +4,8 @@ use std::cmp::Ordering;
 impl State {
     pub fn value(&self) -> f32 {
         let mut score: f32 = 0.0;
+        let mut current_king = false;
+        let mut other_king = false;
 
         for row in 0..8 {
             for column in 0..8 {
@@ -18,11 +20,25 @@ impl State {
                         } else {
                             s += (row - 1) as f32 * 0.1;
                         }
+                    } else if piece.t == PieceType::King {
+                        if piece.color == self.current_player {
+                            current_king = true;
+                        } else {
+                            other_king = true;
+                        }
                     }
 
                     score += if piece.color == self.current_player { s } else { -s };
                 }
             }
+        }
+
+        if !current_king {
+            return -1.0;
+        }
+
+        if !other_king {
+            return 1.0;
         }
 
         // We divide by 100 to ensure that checkmate (whose absolute value is 1)

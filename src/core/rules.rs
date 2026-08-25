@@ -7,7 +7,7 @@ impl State {
         for row in 0..8 {
             for col in 0..8 {
                 if let Some(piece) = self.board[row][col] && piece.color == self.current_player {
-                    moves.extend(self.piece_move(Position::new(row as i32, col as i32), piece, false));
+                    moves.extend(self.piece_move(Position::new(row as i32, col as i32), piece, true));
                 }
             }
         }
@@ -15,7 +15,14 @@ impl State {
         moves
     }
 
-    pub fn piece_move(&mut self, position: Position, piece: Piece, in_check_test: bool) -> Vec<Move> {
+    // This function can generate both legal and pseudo-legal moves (where
+    // checks are allowed). Pseudo-legal moves are used because ensuring that
+    // there is no check requires another step of move generation to see if the
+    // king can be captured, and that makes the process ~20x slower. Since the
+    // next move will be a king capture anyway, which will give the current move
+    // a bad evaluation, we can discard the check. The ability to generate legal
+    // moves is left here for perft tests.
+    pub fn piece_move(&mut self, position: Position, piece: Piece, pseudo_legal: bool) -> Vec<Move> {
         let moves = match piece.t {
             PieceType::Pawn => {
                 let direction = if piece.color == Color::White { -1 } else { 1 };
@@ -301,12 +308,7 @@ impl State {
             }
         };
 
-        // If any of the subsequent moves may lead to a king capture, we are
-        // placing the king in chess, which is not allowed. To prevent an
-        // infinite recursion, (since the moves needed inside the in_check call
-        // are also calling in_check, we do not perform that check in the
-        // recursive case).
-        if !in_check_test {
+        if !pseudo_legal {
             moves.into_iter().filter(|m| {
                 self.apply(m);
                 self.current_player = !self.current_player;
@@ -478,18 +480,22 @@ impl State {
         }
 
         // We have to prevent future castlings if a rook is captured
-        if let Some(captured) = m.captured && captured.t == PieceType::Rook {
-            if m.destination == Position::new(7, 0) {
-                self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::Queen);
-            }
-            if m.destination == Position::new(7, 7) {
-                self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::King);
-            }
-            if m.destination == Position::new(0, 0) {
-                self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::Queen);
-            }
-            if m.destination == Position::new(0, 7) {
-                self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::King);
+        if let Some(captured) = m.captured {
+            if captured.t == PieceType::Rook {
+                if m.destination == Position::new(7, 0) {
+                    self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::Queen);
+                }
+                if m.destination == Position::new(7, 7) {
+                    self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::King);
+                }
+                if m.destination == Position::new(0, 0) {
+                    self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::Queen);
+                }
+                if m.destination == Position::new(0, 7) {
+                    self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::King);
+                }
+            } else if captured.t == PieceType::King {
+                self.ended = true;
             }
         }
 
@@ -502,6 +508,10 @@ impl State {
 
         if let Some(captured) = m.captured {
             self.board[m.destination.row as usize][m.destination.column as usize] = Some(captured);
+
+            if captured.t == PieceType::King {
+                self.ended = false;
+            }
         }
 
         self.current_player = !self.current_player;
