@@ -3,21 +3,27 @@ use std::cmp::Ordering;
 
 impl State {
     pub fn value(&self) -> f32 {
-        let score: f32 = self.board.iter().map(|(position, piece)| {
-            let mut s = piece.t.value();
+        let mut score: f32 = 0.0;
 
-            // Pawns that are further up the board are given a little bonus to
-            // encourage promotion
-            if piece.t == PieceType::Pawn {
-                if piece.color == Color::White {
-                    s += (6 - position.row) as f32 * 0.1;
-                } else {
-                    s += (position.row - 1) as f32 * 0.1;
+        for row in 0..8 {
+            for column in 0..8 {
+                if let Some(piece) = self.board[row][column] {
+                    let mut s = piece.t.value();
+
+                    // Pawns that are further up the board are given a little bonus to
+                    // encourage promotion
+                    if piece.t == PieceType::Pawn {
+                        if piece.color == Color::White {
+                            s += (6 - row) as f32 * 0.1;
+                        } else {
+                            s += (row - 1) as f32 * 0.1;
+                        }
+                    }
+
+                    score += if piece.color == self.current_player { s } else { -s };
                 }
             }
-
-            if piece.color == self.current_player { s } else { -s }
-        }).sum();
+        }
 
         // We divide by 100 to ensure that checkmate (whose absolute value is 1)
         // is always preferred when possible

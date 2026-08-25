@@ -1,6 +1,4 @@
 use crate::core::model::*;
-
-use std::collections::HashMap;
 use std::fmt::Display;
 
 pub const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -48,19 +46,19 @@ pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<State> {
 }
 
 fn parse_board(fen: &str) -> Option<Board> {
-    let mut i = 0;
-    let mut j = 0;
-    let mut board = HashMap::new();
+    let mut i: usize = 0;
+    let mut j: usize = 0;
+    let mut board = [[None; 8]; 8];
 
     for c in fen.chars() {
         if c.is_numeric() {
-            j += c.to_digit(10).unwrap() as i32;
+            j += c.to_digit(10).unwrap() as usize;
         } else if c == '/' {
             i += 1;
             j = 0;
         } else {
             let piece = parse_piece(c)?;
-            board.insert(Position::new(i, j), piece);
+            board[i][j] = Some(piece);
             j += 1;
         }
     }

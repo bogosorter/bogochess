@@ -2,8 +2,17 @@ use crate::core::model::*;
 
 impl State {
     pub fn moves(&mut self) -> Vec<Move> {
-        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.current_player).map(|(pos, piece)| (*pos, *piece)).collect();
-        pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, false)).flatten().collect()
+        let mut moves = Vec::new();
+
+        for row in 0..8 {
+            for col in 0..8 {
+                if let Some(piece) = self.board[row][col] && piece.color == self.current_player {
+                    moves.extend(self.piece_move(Position::new(row as i32, col as i32), piece, false));
+                }
+            }
+        }
+
+        moves
     }
 
     pub fn piece_move(&mut self, position: Position, piece: Piece, in_check_test: bool) -> Vec<Move> {
@@ -16,7 +25,7 @@ impl State {
                 let mut moves = Vec::new();
 
                 // Forward and double-square move
-                if !self.board.contains_key(&new_position) {
+                if self.board[new_position.row as usize][new_position.column as usize].is_none() {
                     // Promotion
                     if piece.color == Color::White && new_position.row == 0 || piece.color == Color::Black && new_position.row == 7 {
                         for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
@@ -45,7 +54,7 @@ impl State {
                     // Two-square move is allowed
                     if piece.color == Color::White && position.row == 6 || piece.color == Color::Black && position.row == 1 {
                         let new_position = new_position + offset;
-                        if !self.board.contains_key(&new_position) {
+                        if self.board[new_position.row as usize][new_position.column as usize].is_none() {
                             moves.push(Move {
                                 t: MoveType::TwoSquare,
                                 origin: position,
@@ -63,7 +72,7 @@ impl State {
                 let offsets = vec![Position::new(direction, -1), Position::new(direction, 1)];
                 for offset in offsets {
                     let new_position = position + offset;
-                    if let Some(&captured) = self.board.get(&new_position) && captured.color != self.current_player {
+                    if new_position.is_valid() && let Some(captured) = self.board[new_position.row as usize][new_position.column as usize] && captured.color != self.current_player {
                         // Promotion
                         if piece.color == Color::White && new_position.row == 0 || piece.color == Color::Black && new_position.row == 7 {
                             for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
@@ -177,7 +186,7 @@ impl State {
 
                 // White castling queen-side
                 if self.current_player == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
-                    if !self.board.contains_key(&Position::new(7, 1)) && !self.board.contains_key(&Position::new(7, 2)) && !self.board.contains_key(&Position::new(7, 3)) {
+                    if self.board[7][1].is_none() && self.board[7][2].is_none() && self.board[7][3].is_none() {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
                         // square and check if it is in check. The king is not
@@ -185,11 +194,10 @@ impl State {
                         // that the king itself is not in check when the move
                         // initiates.
 
-                        let intermediate_position = Position::new(7, 3);
-                        let king = self.board.get(&position).expect("king should be on the square").clone();
-                        self.board.insert(intermediate_position, king);
+                        let king = self.board[position.row as usize][position.column as usize].expect("king should be on the square");
+                        self.board[7][3] = Some(king);
                         let in_check = self.in_check();
-                        self.board.remove(&intermediate_position);
+                        self.board[7][3] = None;
 
                         if !in_check {
                             moves.push(Move {
@@ -206,7 +214,7 @@ impl State {
                 }
                 // White castling king-side
                 if self.current_player == Color::White && self.castlings.contains(&Piece::new(PieceType::King, Color::White)) {
-                    if !self.board.contains_key(&Position::new(7, 5)) && !self.board.contains_key(&Position::new(7, 6)) {
+                    if self.board[7][5].is_none() && self.board[7][6].is_none() {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
                         // square and check if it is in check. The king is not
@@ -214,11 +222,10 @@ impl State {
                         // that the king itself is not in check when the move
                         // initiates.
 
-                        let intermediate_position = Position::new(7, 5);
-                        let king = self.board.get(&position).expect("king should be on the square").clone();
-                        self.board.insert(intermediate_position, king);
+                        let king = self.board[position.row as usize][position.column as usize].expect("king should be on the square");
+                        self.board[7][5] = Some(king);
                         let in_check = self.in_check();
-                        self.board.remove(&intermediate_position);
+                        self.board[7][5] = None;
 
                         if !in_check {
                             moves.push(Move {
@@ -235,7 +242,7 @@ impl State {
                 }
                 // Black castling queen-side
                 if self.current_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::Queen, Color::Black)) {
-                    if !self.board.contains_key(&Position::new(0, 1)) && !self.board.contains_key(&Position::new(0, 2)) && !self.board.contains_key(&Position::new(0, 3)) {
+                    if self.board[0][1].is_none() && self.board[0][2].is_none() && self.board[0][3].is_none() {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
                         // square and check if it is in check. The king is not
@@ -243,11 +250,10 @@ impl State {
                         // that the king itself is not in check when the move
                         // initiates.
 
-                        let intermediate_position = Position::new(0, 3);
-                        let king = self.board.get(&position).expect("king should be on the square").clone();
-                        self.board.insert(intermediate_position, king);
+                        let king = self.board[position.row as usize][position.column as usize].expect("king should be on the square");
+                        self.board[0][3] = Some(king);
                         let in_check = self.in_check();
-                        self.board.remove(&intermediate_position);
+                        self.board[0][3] = None;
 
                         if !in_check {
                             moves.push(Move {
@@ -264,7 +270,7 @@ impl State {
                 }
                 // Black castling king-side
                 if self.current_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::King, Color::Black)) {
-                    if !self.board.contains_key(&Position::new(0, 5)) && !self.board.contains_key(&Position::new(0, 6)) {
+                    if self.board[0][5].is_none() && self.board[0][6].is_none() {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
                         // square and check if it is in check. The king is not
@@ -272,11 +278,10 @@ impl State {
                         // that the king itself is not in check when the move
                         // initiates.
 
-                        let intermediate_position = Position::new(0, 5);
-                        let king = self.board.get(&position).expect("king should be on the square").clone();
-                        self.board.insert(intermediate_position, king);
+                        let king = self.board[position.row as usize][position.column as usize].expect("king should be on the square");
+                        self.board[0][5] = Some(king);
                         let in_check = self.in_check();
-                        self.board.remove(&intermediate_position);
+                        self.board[0][5] = None;
 
                         if !in_check {
                             moves.push(Move {
@@ -321,7 +326,7 @@ impl State {
                 return false;
             }
 
-            if let Some(other_piece) = self.board.get(destination) {
+            if let Some(other_piece) = self.board[destination.row as usize][destination.column as usize] {
                 self.current_player != other_piece.color
             } else {
                 true
@@ -332,7 +337,7 @@ impl State {
             t: MoveType::Normal,
             origin: position,
             destination,
-            captured: self.board.get(&destination).copied(),
+            captured: self.board[destination.row as usize][destination.column as usize],
             promotion: None,
             previous_castlings: self.castlings.clone(),
             previous_en_passant: self.en_passant
@@ -345,7 +350,7 @@ impl State {
             let offset = slide;
 
             let mut current = position + offset;
-            while current.is_valid() && !self.board.contains_key(&current) {
+            while current.is_valid() && self.board[current.row as usize][current.column as usize].is_none() {
                 moves.push(Move {
                     t: MoveType::Normal,
                     origin: position,
@@ -358,17 +363,19 @@ impl State {
                 current += offset;
             }
 
-            // Another move is still possible, if the piece blocking the movement can be captured
-            if let Some(&captured) = self.board.get(&current) && captured.color != self.current_player {
-                moves.push(Move {
-                    t: MoveType::Normal,
-                    origin: position,
-                    destination: current,
-                    captured: Some(captured),
-                    promotion: None,
-                    previous_castlings: self.castlings.clone(),
-                    previous_en_passant: self.en_passant
-                });
+            if current.is_valid() {
+                // Another move is still possible, if the piece blocking the movement can be captured
+                if let Some(captured) = self.board[current.row as usize][current.column as usize] && captured.color != self.current_player {
+                    moves.push(Move {
+                        t: MoveType::Normal,
+                        origin: position,
+                        destination: current,
+                        captured: Some(captured),
+                        promotion: None,
+                        previous_castlings: self.castlings.clone(),
+                        previous_en_passant: self.en_passant
+                    });
+                }
             }
 
             moves
@@ -377,8 +384,16 @@ impl State {
 
     pub fn in_check(&mut self) -> bool {
         self.current_player = !self.current_player;
-        let pieces: Vec<(Position, Piece)> = self.board.iter().filter(|piece| piece.1.color == self.current_player).map(|(pos, piece)| (*pos, *piece)).collect();
-        let next_moves: Vec<Move> = pieces.iter().map(|piece| self.piece_move(piece.0, piece.1, true)).flatten().collect();
+
+        let mut next_moves = Vec::new();
+        for row in 0..8 {
+            for col in 0..8 {
+                if let Some(piece) = self.board[row][col] && piece.color == self.current_player {
+                    next_moves.extend(self.piece_move(Position::new(row as i32, col as i32), piece, true));
+                }
+            }
+        }
+
         self.current_player = !self.current_player;
 
         next_moves.iter().any(|next_move| {
@@ -391,8 +406,8 @@ impl State {
     }
 
     pub fn apply(&mut self, m: &Move) {
-        let piece = self.board.remove(&m.origin).expect("position should have a piece");
-        self.board.insert(m.destination, piece);
+        let piece = self.board[m.origin.row as usize][m.origin.column as usize].take().expect("position should have a piece");
+        self.board[m.destination.row as usize][m.destination.column as usize] = Some(piece);
         self.en_passant = None;
 
         // If this is a castle, move the rook too
@@ -400,25 +415,25 @@ impl State {
             if self.current_player == Color::White {
                 // White queen-side
                 if m.destination == Position::new(7, 2) {
-                    let rook = self.board.remove(&Position::new(7, 0)).expect("position should have a rook");
-                    self.board.insert(Position::new(7, 3), rook);
+                    let rook = self.board[7][0].take().expect("position should have a rook");
+                    self.board[7][3] = Some(rook);
                 }
                 // White king-side
                 else {
-                    let rook = self.board.remove(&Position::new(7, 7)).expect("position should have a rook");
-                    self.board.insert(Position::new(7, 5), rook);
+                    let rook = self.board[7][7].take().expect("position should have a rook");
+                    self.board[7][5] = Some(rook);
                 }
                 self.castlings.retain(|piece| piece.color != Color::White);
             } else {
                 // Black queen-side
                 if m.destination == Position::new(0, 2) {
-                    let rook = self.board.remove(&Position::new(0, 0)).expect("position should have a rook");
-                    self.board.insert(Position::new(0, 3), rook);
+                    let rook = self.board[0][0].take().expect("position should have a rook");
+                    self.board[0][3] = Some(rook);
                 }
                 // Black king-side
                 else {
-                    let rook = self.board.remove(&Position::new(0, 7)).expect("position should have a rook");
-                    self.board.insert(Position::new(0, 5), rook);
+                    let rook = self.board[0][7].take().expect("position should have a rook");
+                    self.board[0][5] = Some(rook);
                 }
                 self.castlings.retain(|piece| piece.color != Color::Black);
             }
@@ -428,7 +443,7 @@ impl State {
             self.en_passant = Some(Position::new((m.origin.row + m.destination.row) / 2, m.origin.column));
         }
         else if m.t == MoveType::EnPassant {
-            self.board.remove(&Position::new(m.origin.row, m.destination.column));
+            self.board[m.origin.row as usize][m.destination.column as usize] = None;
         }
         // Remove castling abilities if king or rook are moving
         else {
@@ -459,7 +474,7 @@ impl State {
         }
 
         if let Some(promoted_type) = m.promotion {
-            self.board.insert(m.destination, Piece::new(promoted_type, piece.color));
+            self.board[m.destination.row as usize][m.destination.column as usize] = Some(Piece::new(promoted_type, piece.color));
         }
 
         // We have to prevent future castlings if a rook is captured
@@ -482,11 +497,11 @@ impl State {
     }
 
     pub fn undo(&mut self, m: &Move) {
-        let piece = self.board.remove(&m.destination).expect("position should have a piece");
-        self.board.insert(m.origin, piece);
+        let piece = self.board[m.destination.row as usize][m.destination.column as usize].take().expect("position should have a piece");
+        self.board[m.origin.row as usize][m.origin.column as usize] = Some(piece);
 
         if let Some(captured) = m.captured {
-            self.board.insert(m.destination, captured);
+            self.board[m.destination.row as usize][m.destination.column as usize] = Some(captured);
         }
 
         self.current_player = !self.current_player;
@@ -496,34 +511,34 @@ impl State {
             if self.current_player == Color::White {
                 // White queen-side
                 if m.destination == Position::new(7, 2) {
-                    let rook = self.board.remove(&Position::new(7, 3)).expect("position should have a rook");
-                    self.board.insert(Position::new(7, 0), rook);
+                    let rook = self.board[7][3].take().expect("position should have a rook");
+                    self.board[7][0] = Some(rook);
                 }
                 // White king-side
                 else {
-                    let rook = self.board.remove(&Position::new(7, 5)).expect("position should have a rook");
-                    self.board.insert(Position::new(7, 7), rook);
+                    let rook = self.board[7][5].take().expect("position should have a rook");
+                    self.board[7][7] = Some(rook);
                 }
             } else {
                 // Black queen-side
                 if m.destination == Position::new(0, 2) {
-                    let rook = self.board.remove(&Position::new(0, 3)).expect("position should have a rook");
-                    self.board.insert(Position::new(0, 0), rook);
+                    let rook = self.board[0][3].take().expect("position should have a rook");
+                    self.board[0][0] = Some(rook);
                 }
                 // Black king-side
                 else {
-                    let rook = self.board.remove(&Position::new(0, 5)).expect("position should have a rook");
-                    self.board.insert(Position::new(0, 7), rook);
+                    let rook = self.board[0][5].take().expect("position should have a rook");
+                    self.board[0][7] = Some(rook);
                 }
             }
         }
         // The en-passant square has to be unset if this is a two-square move
         else if m.t == MoveType::EnPassant {
-            self.board.insert(Position::new(m.origin.row, m.destination.column), Piece::new(PieceType::Pawn, !piece.color));
+            self.board[m.origin.row as usize][m.destination.column as usize] = Some(Piece::new(PieceType::Pawn, !piece.color));
         }
 
         if !m.promotion.is_none() {
-            self.board.insert(m.origin, Piece::new(PieceType::Pawn, piece.color));
+            self.board[m.origin.row as usize][m.origin.column as usize] = Some(Piece::new(PieceType::Pawn, piece.color));
         }
 
         self.castlings = m.previous_castlings.clone();

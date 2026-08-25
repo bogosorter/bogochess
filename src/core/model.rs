@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 mod position_impl;
 mod piece_impl;
 mod color_impl;
@@ -40,7 +38,7 @@ pub struct Piece {
     pub color: Color
 }
 
-pub type Board = HashMap<Position, Piece>;
+pub type Board = [[Option<Piece>; 8]; 8];
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord)]
 pub enum PieceType {
