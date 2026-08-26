@@ -12,7 +12,7 @@ fn test(position: &str, depth: u32) {
 }
 
 fn idempotent(state: &mut State, depth: u32) {
-    if depth == 0 {
+    if depth == 0 || state.ended == false {
         return;
     }
 
@@ -69,4 +69,9 @@ fn position_5() {
 #[test]
 fn position_6() {
     test(POSITION_6, 3);
+}
+
+#[test]
+fn extra() {
+    test("8/2p5/3p4/KP5r/2R4k/5p2/4P1P1/8 b - - 1 1", 1);
 }
