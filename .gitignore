@@ -3,3 +3,4 @@ tests/tmp.rs
 temp.fen
 flamegraph.svg
 perf.data
+bench_input.txt

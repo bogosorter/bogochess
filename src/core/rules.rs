@@ -1,13 +1,19 @@
 use crate::core::model::*;
 
 impl State {
+    // This function generates pseudo-legal moves (where checks are allowed).
+    // Pseudo-legal moves are used because ensuring that there is no check
+    // requires another step of move generation to see if the king can be
+    // captured, and that makes the process ~20x slower. Since the next move
+    // will be a king capture anyway, which will give the current move a bad
+    // evaluation, we can discard the check.
     pub fn moves(&mut self) -> Vec<Move> {
-        let mut moves = Vec::new();
+        let mut moves = Vec::with_capacity(220);
 
         for row in 0..8 {
             for col in 0..8 {
                 if let Some(piece) = self.board[row][col] && piece.color == self.current_player {
-                    moves.extend(self.piece_move(Position::new(row as i32, col as i32), piece, true));
+                    self.piece_move(&mut moves, Position::new(row as i32, col as i32), piece);
                 }
             }
         }
@@ -15,21 +21,12 @@ impl State {
         moves
     }
 
-    // This function can generate both legal and pseudo-legal moves (where
-    // checks are allowed). Pseudo-legal moves are used because ensuring that
-    // there is no check requires another step of move generation to see if the
-    // king can be captured, and that makes the process ~20x slower. Since the
-    // next move will be a king capture anyway, which will give the current move
-    // a bad evaluation, we can discard the check. The ability to generate legal
-    // moves is left here for perft tests.
-    pub fn piece_move(&mut self, position: Position, piece: Piece, pseudo_legal: bool) -> Vec<Move> {
-        let moves = match piece.t {
+    pub fn piece_move(&mut self, mut moves: &mut Vec<Move>, position: Position, piece: Piece) {
+        match piece.t {
             PieceType::Pawn => {
                 let direction = if piece.color == Color::White { -1 } else { 1 };
                 let offset = Position::new(direction, 0);
                 let new_position = position + offset;
-
-                let mut moves = Vec::new();
 
                 // Forward and double-square move
                 if self.board[new_position.row as usize][new_position.column as usize].is_none() {
@@ -121,8 +118,6 @@ impl State {
                         }
                     }
                 }
-
-                moves
             },
 
             PieceType::Knight => {
@@ -137,7 +132,7 @@ impl State {
                     Position::new(-1, 2)
                 ];
 
-                self.offsets_move(position, offsets)
+                self.offsets_move(&mut moves, position, offsets);
             },
 
             PieceType::Bishop => {
@@ -148,7 +143,7 @@ impl State {
                     Position::new(-1, 1)
                 ];
 
-                self.sliding_move(position, slides)
+                self.sliding_move(&mut moves, position, slides);
             },
 
             PieceType::Rook => {
@@ -159,7 +154,7 @@ impl State {
                     Position::new(0, -1)
                 ];
 
-                self.sliding_move(position, slides)
+                self.sliding_move(&mut moves, position, slides);
             },
 
             PieceType::Queen => {
@@ -174,7 +169,7 @@ impl State {
                     Position::new(-1, 1),
                 ];
 
-                self.sliding_move(position, slides)
+                self.sliding_move(&mut moves, position, slides);
             },
 
             PieceType::King => {
@@ -189,7 +184,7 @@ impl State {
                     Position::new(-1, 1),
                 ];
 
-                let mut moves = self.offsets_move(position, offsets);
+                self.offsets_move(&mut moves, position, offsets);
 
                 // White castling queen-side
                 if self.current_player == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
@@ -303,26 +298,11 @@ impl State {
                         }
                     }
                 }
-
-                moves
             }
         };
-
-        if !pseudo_legal {
-            moves.into_iter().filter(|m| {
-                self.apply(m);
-                self.current_player = !self.current_player;
-                let in_check = self.in_check();
-                self.current_player = !self.current_player;
-                self.undo(m);
-                !in_check
-            }).collect()
-        } else {
-            moves
-        }
     }
 
-    pub fn offsets_move(&self, position: Position, offsets: Vec<Position>) -> Vec<Move> {
+    pub fn offsets_move(&self, moves: &mut Vec<Move>, position: Position, offsets: Vec<Position>){
         let destinations = offsets.iter().map(|offset| position + *offset).filter(|destination| {
             if !destination.is_valid() {
                 return false;
@@ -335,20 +315,21 @@ impl State {
             }
         });
 
-        destinations.map(|destination| Move {
-            t: MoveType::Normal,
-            origin: position,
-            destination,
-            captured: self.board[destination.row as usize][destination.column as usize],
-            promotion: None,
-            previous_castlings: self.castlings.clone(),
-            previous_en_passant: self.en_passant
-        }).collect()
+        for destination in destinations {
+            moves.push(Move {
+                t: MoveType::Normal,
+                origin: position,
+                destination,
+                captured: self.board[destination.row as usize][destination.column as usize],
+                promotion: None,
+                previous_castlings: self.castlings.clone(),
+                previous_en_passant: self.en_passant
+            });
+        }
     }
 
-    pub fn sliding_move(&self, position: Position, slides: Vec<Position>) -> Vec<Move> {
-        slides.iter().map(|&slide| {
-            let mut moves = Vec::new();
+    pub fn sliding_move(&self, moves: &mut Vec<Move>, position: Position, slides: Vec<Position>) {
+        for slide in slides {
             let offset = slide;
 
             let mut current = position + offset;
@@ -379,19 +360,17 @@ impl State {
                     });
                 }
             }
-
-            moves
-        }).flatten().collect()
+        };
     }
 
     pub fn in_check(&mut self) -> bool {
         self.current_player = !self.current_player;
 
-        let mut next_moves = Vec::new();
+        let mut next_moves = Vec::with_capacity(220);
         for row in 0..8 {
             for col in 0..8 {
                 if let Some(piece) = self.board[row][col] && piece.color == self.current_player {
-                    next_moves.extend(self.piece_move(Position::new(row as i32, col as i32), piece, true));
+                    self.piece_move(&mut next_moves, Position::new(row as i32, col as i32), piece);
                 }
             }
         }

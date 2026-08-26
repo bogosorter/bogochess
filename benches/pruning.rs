@@ -58,10 +58,12 @@ fn main() {
     benchmark("initial_3", INITIAL_FEN, 3);
     benchmark("initial_4", INITIAL_FEN, 4);
     benchmark("initial_5", INITIAL_FEN, 5);
+    benchmark("initial_6", INITIAL_FEN, 6);
     benchmark("kiwipete_1", KIWIPETE, 1);
     benchmark("kiwipete_2", KIWIPETE, 2);
     benchmark("kiwipete_3", KIWIPETE, 2);
     benchmark("kiwipete_4", KIWIPETE, 2);
+    benchmark("kiwipete_5", KIWIPETE, 5);
     benchmark("position_3_1", POSITION_3, 1);
     benchmark("position_3_2", POSITION_3, 2);
     benchmark("position_3_3", POSITION_3, 3);
@@ -73,18 +75,23 @@ fn main() {
     benchmark("position_4_3", POSITION_4, 3);
     benchmark("position_4_4", POSITION_4, 4);
     benchmark("position_4_5", POSITION_4, 5);
+    benchmark("position_4_6", POSITION_4, 6);
     benchmark("position_4_mirrored_1", POSITION_4_MIRRORED, 1);
     benchmark("position_4_mirrored_2", POSITION_4_MIRRORED, 2);
     benchmark("position_4_mirrored_3", POSITION_4_MIRRORED, 3);
     benchmark("position_4_mirrored_4", POSITION_4_MIRRORED, 4);
     benchmark("position_4_mirrored_5", POSITION_4_MIRRORED, 5);
+    benchmark("position_4_mirrored_6", POSITION_4_MIRRORED, 6);
     benchmark("position_5_1", POSITION_5, 1);
     benchmark("position_5_2", POSITION_5, 2);
     benchmark("position_5_3", POSITION_5, 3);
     benchmark("position_5_4", POSITION_5, 4);
     benchmark("position_5_5", POSITION_5, 5);
+    benchmark("position_5_6", POSITION_5, 6);
     benchmark("position_6_1", POSITION_6, 1);
     benchmark("position_6_2", POSITION_6, 2);
     benchmark("position_6_3", POSITION_6, 3);
     benchmark("position_6_4", POSITION_6, 4);
+    benchmark("position_6_5", POSITION_6, 5);
+    benchmark("position_6_6", POSITION_6, 6);
 }
