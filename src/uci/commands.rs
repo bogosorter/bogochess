@@ -50,7 +50,7 @@ pub fn process<'a>(command: GUICommand, state: &mut State) -> Option<EngineComma
             } else { None },
 
         GUICommand::Go(options) =>
-            if let Some(p) = state.position.as_mut() && let Some(m) = p.search(&options) {
+            if let Some(p) = state.position.as_mut() && let Some(m) = p.search(&mut state.tt, &state.zobrist, &options) {
                 Some(EngineCommand::BestMove(m))
             } else { None },
 

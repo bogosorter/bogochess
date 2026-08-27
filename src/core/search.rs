@@ -1,4 +1,4 @@
-use crate::core::model::{Position, Move};
+use crate::core::model::{Move, Position, TRANSPOSITION_MASK, TranspositionEntry, TranspositionTable, TranspositionType, ZobristValues};
 
 use std::cmp::Ordering;
 use std::time::{Instant, Duration};
@@ -25,14 +25,14 @@ pub struct SearchStatistics {
 
 
 impl Position {
-    pub fn search(&mut self, options: &SearchOptions) -> Option<Move> {
-        let (_, m) = iterative_deepening(self, options, &mut SearchStatistics::new());
+    pub fn search(&mut self, tt: &mut TranspositionTable, zobrist: &ZobristValues, options: &SearchOptions) -> Option<Move> {
+        let (_, m) = iterative_deepening(self, tt, zobrist, options, &mut SearchStatistics::new());
         m
     }
 }
 
 
-fn iterative_deepening(position: &mut Position, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
+fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, zobrist: &ZobristValues, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
     let start = Instant::now();
     let search_time = options.search_time(position.current_player);
     let deadline = start + Duration::from_millis(search_time as u64);
@@ -48,10 +48,12 @@ fn iterative_deepening(position: &mut Position, options: &SearchOptions, statist
             max_depth: i,
             deadline,
             statistics: statistics,
-            history: &mut history
+            history: &mut history,
+            tt,
+            zobrist
         };
 
-        if let Some((new_move, new_score)) = alphabeta(&mut options, 0, f32::MIN, f32::MAX) {
+        if let Some((new_move, new_score)) = alphabeta(&mut options, i, f32::MIN, f32::MAX) {
             current_move = new_move;
             current_score = new_score;
 
@@ -78,10 +80,12 @@ pub struct AlphaBetaOptions<'a> {
     pub max_depth: u32,
     pub deadline: Instant,
     pub statistics: &'a mut SearchStatistics,
-    pub history: &'a mut [[[u32; 64]; 64]; 2]
+    pub history: &'a mut [[[u32; 64]; 64]; 2],
+    pub tt: &'a mut TranspositionTable,
+    pub zobrist: &'a ZobristValues
 }
 
-pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, beta: f32) -> Option<(Option<Move>, f32)> {
+pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f32) -> Option<(Option<Move>, f32)> {
 
     // End the search earlier if the time has run out
     if Instant::now() > options.deadline {
@@ -92,9 +96,34 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
         return Some((None, options.position.value()));
     }
 
-    // End of normal search, pass on to quiescent search
-    if depth == options.max_depth {
-        return Some(quiescent(options, depth, alpha, beta));
+    let mut current_alpha = alpha;
+    let mut current_beta = beta;
+
+    // Try to find the current position on the transposition table
+    let hash = options.position.hash(options.zobrist);
+    if let Some(entry) = options.tt[(hash as usize) & TRANSPOSITION_MASK].as_ref() && entry.hash == hash && entry.depth >= depth {
+        match entry.t {
+            TranspositionType::Exact => return Some((entry.best_move.clone(), entry.value)),
+            TranspositionType::LowerBound => {
+                if entry.value >= beta {
+                    return Some((entry.best_move.clone(), entry.value));
+                } else {
+                    current_alpha = current_alpha.max(entry.value);
+                }
+            },
+            TranspositionType::UpperBound => {
+                if entry.value <= alpha {
+                    return Some((entry.best_move.clone(), entry.value));
+                } else {
+                    current_beta = current_beta.min(entry.value);
+                }
+            }
+        }
+    }
+
+    // End of normal search, pass on to quiescent
+    if depth == 0 {
+        return Some(quiescent(options, 0, current_alpha, current_beta));
     }
 
     options.statistics.nodes += 1;
@@ -115,7 +144,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
         options.position.apply(&m);
         // We invert alpha and beta since the next player expects scores
         // according to his perspective
-        let (_, score) = alphabeta(options, depth + 1, -beta, -alpha)?;
+        let (_, score) = alphabeta(options, depth - 1, -current_beta, -current_alpha)?;
         options.position.undo(&m);
 
         // Scores are returned from the next player's perspective, so we have to
@@ -128,26 +157,34 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
 
             // Return earlier if the score is better than the worst the
             // minimizing player can do
-            if score >= beta {
+            if score >= current_beta {
                 // Update the history table according to the history heuristics
-                let update = (options.max_depth - depth + 1) * (options.max_depth - depth + 1);
+                let update = depth * depth;
                 let from = best_move.as_ref().unwrap().origin.index();
                 let to = best_move.as_ref().unwrap().destination.index();
                 options.history[options.position.current_player as usize][from][to] += update;
 
+                options.tt[hash as usize & TRANSPOSITION_MASK] = Some(TranspositionEntry { hash, depth, value: score, best_move: best_move.clone(), t: TranspositionType::LowerBound });
                 return Some((best_move, score));
             }
 
-            alpha = alpha.max(score);
+            current_alpha = current_alpha.max(score);
         }
     }
 
+    options.tt[hash as usize & TRANSPOSITION_MASK] = Some(TranspositionEntry { hash, depth, value: best_score, best_move: best_move.clone(), t:
+        if best_score > alpha {
+            TranspositionType::Exact
+        } else {
+            TranspositionType::UpperBound
+        }
+    });
     Some((best_move, best_score))
 }
 
 pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, beta: f32) -> (Option<Move>, f32) {
     options.statistics.nodes += 1;
-    options.statistics.selective_depth =  options.statistics.selective_depth.max(depth);
+    options.statistics.selective_depth = options.statistics.selective_depth.max(options.max_depth + depth);
 
     if options.position.ended {
         return (None, options.position.value());

@@ -1,7 +1,7 @@
 // Benchmarks the alpha-beta pruning algorithm on various positions and depths.
 // Source: https://chessprogramming.org/Perft_Results
 
-use bogochess::core::model::{Position};
+use bogochess::core::model::{State, Position};
 use bogochess::core::search::{self, SearchStatistics, AlphaBetaOptions};
 use bogochess::uci::fen;
 
@@ -23,10 +23,12 @@ fn benchmark(name: &str, position: &str, depth: u32) {
 // limited version to compare different versions.
 
 fn iterative_deepening(position: &mut Position, depth: u32, statistics: &mut SearchStatistics) {
+    let mut state = State::new();
+    let mut history = [[[0; 64]; 64]; 2];
+
     // 100 years from now (infinite deadline)
     let start = Instant::now();
     let deadline = start + Duration::from_secs(365 * 86400 * 100);
-    let mut history = [[[0; 64]; 64]; 2];
 
     for i in 1..=depth {
         let mut options = AlphaBetaOptions {
@@ -34,10 +36,12 @@ fn iterative_deepening(position: &mut Position, depth: u32, statistics: &mut Sea
             max_depth: i,
             deadline,
             statistics: statistics,
-            history: &mut history
+            history: &mut history,
+            tt: &mut state.tt,
+            zobrist: &state.zobrist
         };
 
-        search::alphabeta(&mut options, 0, f32::MIN, f32::MAX);
+        search::alphabeta(&mut options, i, f32::MIN, f32::MAX);
     };
 
     statistics.search_time = start.elapsed().as_micros() as u64;
@@ -64,6 +68,7 @@ fn main() {
     benchmark("kiwipete_3", KIWIPETE, 2);
     benchmark("kiwipete_4", KIWIPETE, 2);
     benchmark("kiwipete_5", KIWIPETE, 5);
+    benchmark("kiwipete_6", KIWIPETE, 6);
     benchmark("position_3_1", POSITION_3, 1);
     benchmark("position_3_2", POSITION_3, 2);
     benchmark("position_3_3", POSITION_3, 3);
