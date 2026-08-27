@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 pub const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-pub fn parse(fen: &str) -> Option<State> {
+pub fn parse(fen: &str) -> Option<Position> {
     let words: Vec<&str> = fen.split_whitespace().collect();
     if words.len() != 6 {
         return None
@@ -25,7 +25,7 @@ pub fn parse(fen: &str) -> Option<State> {
     };
     let halfmoves = words[4].parse::<u32>().ok()?;
 
-    Some(State {
+    Some(Position {
         board,
         ended: false,
         current_player: active_color,
@@ -35,7 +35,7 @@ pub fn parse(fen: &str) -> Option<State> {
     })
 }
 
-pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<State> {
+pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<Position> {
     let mut position = parse(fen)?;
 
     for s in moves {
@@ -95,7 +95,7 @@ fn parse_castling_piece(fen: char) -> Option<Piece> {
     }
 }
 
-fn parse_square(fen: &str) -> Option<Position> {
+fn parse_square(fen: &str) -> Option<Square> {
     if fen.len() != 2 {
         return None
     }
@@ -122,7 +122,7 @@ fn parse_square(fen: &str) -> Option<Position> {
         return None;
     };
 
-    return Some(Position::new(row, column))
+    return Some(Square::new(row, column))
 }
 
 impl Display for Move {
@@ -134,7 +134,7 @@ impl Display for Move {
     }
 }
 
-impl Display for Position {
+impl Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}", (b'a' + self.column as u8) as char, 8 - self.row)
     }

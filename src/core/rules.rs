@@ -1,6 +1,6 @@
 use crate::core::model::*;
 
-impl State {
+impl Position {
     // This function generates pseudo-legal moves (where checks are allowed).
     // Pseudo-legal moves are used because ensuring that there is no check
     // requires another step of move generation to see if the king can be
@@ -13,7 +13,7 @@ impl State {
         for row in 0..8 {
             for col in 0..8 {
                 if let Some(piece) = self.board[row][col] && piece.color == self.current_player {
-                    self.piece_move(&mut moves, Position::new(row as i32, col as i32), piece);
+                    self.piece_move(&mut moves, Square::new(row as i32, col as i32), piece);
                 }
             }
         }
@@ -21,12 +21,12 @@ impl State {
         moves
     }
 
-    pub fn piece_move(&mut self, mut moves: &mut Vec<Move>, position: Position, piece: Piece) {
+    pub fn piece_move(&mut self, mut moves: &mut Vec<Move>, square: Square, piece: Piece) {
         match piece.t {
             PieceType::Pawn => {
                 let direction = if piece.color == Color::White { -1 } else { 1 };
-                let offset = Position::new(direction, 0);
-                let new_position = position + offset;
+                let offset = Square::new(direction, 0);
+                let new_position = square + offset;
 
                 // Forward and double-square move
                 if self.board[new_position.row as usize][new_position.column as usize].is_none() {
@@ -35,7 +35,7 @@ impl State {
                         for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
                             moves.push(Move {
                                 t: MoveType::Normal,
-                                origin: position,
+                                origin: square,
                                 destination: new_position,
                                 captured: None,
                                 promotion: Some(promoted_type),
@@ -46,7 +46,7 @@ impl State {
                     } else {
                         moves.push(Move {
                             t: MoveType::Normal,
-                            origin: position,
+                            origin: square,
                             destination: new_position,
                             captured: None,
                             promotion: None,
@@ -56,12 +56,12 @@ impl State {
                     }
 
                     // Two-square move is allowed
-                    if piece.color == Color::White && position.row == 6 || piece.color == Color::Black && position.row == 1 {
+                    if piece.color == Color::White && square.row == 6 || piece.color == Color::Black && square.row == 1 {
                         let new_position = new_position + offset;
                         if self.board[new_position.row as usize][new_position.column as usize].is_none() {
                             moves.push(Move {
                                 t: MoveType::TwoSquare,
-                                origin: position,
+                                origin: square,
                                 destination: new_position,
                                 captured: None,
                                 promotion: None,
@@ -73,16 +73,16 @@ impl State {
                 }
 
                 // Capture
-                let offsets = vec![Position::new(direction, -1), Position::new(direction, 1)];
+                let offsets = vec![Square::new(direction, -1), Square::new(direction, 1)];
                 for offset in offsets {
-                    let new_position = position + offset;
+                    let new_position = square + offset;
                     if new_position.is_valid() && let Some(captured) = self.board[new_position.row as usize][new_position.column as usize] && captured.color != self.current_player {
                         // Promotion
                         if piece.color == Color::White && new_position.row == 0 || piece.color == Color::Black && new_position.row == 7 {
                             for promoted_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
                                 moves.push(Move {
                                     t: MoveType::Normal,
-                                    origin: position,
+                                    origin: square,
                                     destination: new_position,
                                     captured: Some(captured),
                                     promotion: Some(promoted_type),
@@ -93,7 +93,7 @@ impl State {
                         } else {
                             moves.push(Move {
                                 t: MoveType::Normal,
-                                origin: position,
+                                origin: square,
                                 destination: new_position,
                                 captured: Some(captured),
                                 promotion: None,
@@ -108,7 +108,7 @@ impl State {
                         if let Some(en_passant) = self.en_passant && new_position == en_passant {
                             moves.push(Move {
                                 t: MoveType::EnPassant,
-                                origin: position,
+                                origin: square,
                                 destination: new_position,
                                 captured: None,
                                 promotion: None,
@@ -122,69 +122,69 @@ impl State {
 
             PieceType::Knight => {
                 let offsets = vec![
-                    Position::new(2, -1),
-                    Position::new(2, 1),
-                    Position::new(-2, -1),
-                    Position::new(-2, 1),
-                    Position::new(1, -2),
-                    Position::new(1, 2),
-                    Position::new(-1, -2),
-                    Position::new(-1, 2)
+                    Square::new(2, -1),
+                    Square::new(2, 1),
+                    Square::new(-2, -1),
+                    Square::new(-2, 1),
+                    Square::new(1, -2),
+                    Square::new(1, 2),
+                    Square::new(-1, -2),
+                    Square::new(-1, 2)
                 ];
 
-                self.offsets_move(&mut moves, position, offsets);
+                self.offsets_move(&mut moves, square, offsets);
             },
 
             PieceType::Bishop => {
                 let slides = vec![
-                    Position::new(1, -1),
-                    Position::new(1, 1),
-                    Position::new(-1, -1),
-                    Position::new(-1, 1)
+                    Square::new(1, -1),
+                    Square::new(1, 1),
+                    Square::new(-1, -1),
+                    Square::new(-1, 1)
                 ];
 
-                self.sliding_move(&mut moves, position, slides);
+                self.sliding_move(&mut moves, square, slides);
             },
 
             PieceType::Rook => {
                 let slides = vec![
-                    Position::new(1, 0),
-                    Position::new(-1, 0),
-                    Position::new(0, 1),
-                    Position::new(0, -1)
+                    Square::new(1, 0),
+                    Square::new(-1, 0),
+                    Square::new(0, 1),
+                    Square::new(0, -1)
                 ];
 
-                self.sliding_move(&mut moves, position, slides);
+                self.sliding_move(&mut moves, square, slides);
             },
 
             PieceType::Queen => {
                 let slides = vec![
-                    Position::new(1, -1),
-                    Position::new(1, 0),
-                    Position::new(1, 1),
-                    Position::new(0, -1),
-                    Position::new(0, 1),
-                    Position::new(-1, -1),
-                    Position::new(-1, 0),
-                    Position::new(-1, 1),
+                    Square::new(1, -1),
+                    Square::new(1, 0),
+                    Square::new(1, 1),
+                    Square::new(0, -1),
+                    Square::new(0, 1),
+                    Square::new(-1, -1),
+                    Square::new(-1, 0),
+                    Square::new(-1, 1),
                 ];
 
-                self.sliding_move(&mut moves, position, slides);
+                self.sliding_move(&mut moves, square, slides);
             },
 
             PieceType::King => {
                 let offsets = vec![
-                    Position::new(1, -1),
-                    Position::new(1, 0),
-                    Position::new(1, 1),
-                    Position::new(0, -1),
-                    Position::new(0, 1),
-                    Position::new(-1, -1),
-                    Position::new(-1, 0),
-                    Position::new(-1, 1),
+                    Square::new(1, -1),
+                    Square::new(1, 0),
+                    Square::new(1, 1),
+                    Square::new(0, -1),
+                    Square::new(0, 1),
+                    Square::new(-1, -1),
+                    Square::new(-1, 0),
+                    Square::new(-1, 1),
                 ];
 
-                self.offsets_move(&mut moves, position, offsets);
+                self.offsets_move(&mut moves, square, offsets);
 
                 // White castling queen-side
                 if self.current_player == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
@@ -196,7 +196,7 @@ impl State {
                         // that the king itself is not in check when the move
                         // initiates.
 
-                        let king = self.board[position.row as usize][position.column as usize].expect("king should be on the square");
+                        let king = self.board[square.row as usize][square.column as usize].expect("king should be on the square");
                         self.board[7][3] = Some(king);
                         let in_check = self.in_check();
                         self.board[7][3] = None;
@@ -204,8 +204,8 @@ impl State {
                         if !in_check {
                             moves.push(Move {
                                 t: MoveType::Castle,
-                                origin: position,
-                                destination: Position::new(7, 2),
+                                origin: square,
+                                destination: Square::new(7, 2),
                                 captured: None,
                                 promotion: None,
                                 previous_castlings: self.castlings.clone(),
@@ -224,7 +224,7 @@ impl State {
                         // that the king itself is not in check when the move
                         // initiates.
 
-                        let king = self.board[position.row as usize][position.column as usize].expect("king should be on the square");
+                        let king = self.board[square.row as usize][square.column as usize].expect("king should be on the square");
                         self.board[7][5] = Some(king);
                         let in_check = self.in_check();
                         self.board[7][5] = None;
@@ -232,8 +232,8 @@ impl State {
                         if !in_check {
                             moves.push(Move {
                                 t: MoveType::Castle,
-                                origin: position,
-                                destination: Position::new(7, 6),
+                                origin: square,
+                                destination: Square::new(7, 6),
                                 captured: None,
                                 promotion: None,
                                 previous_castlings: self.castlings.clone(),
@@ -252,7 +252,7 @@ impl State {
                         // that the king itself is not in check when the move
                         // initiates.
 
-                        let king = self.board[position.row as usize][position.column as usize].expect("king should be on the square");
+                        let king = self.board[square.row as usize][square.column as usize].expect("king should be on the square");
                         self.board[0][3] = Some(king);
                         let in_check = self.in_check();
                         self.board[0][3] = None;
@@ -260,8 +260,8 @@ impl State {
                         if !in_check {
                             moves.push(Move {
                                 t: MoveType::Castle,
-                                origin: position,
-                                destination: Position::new(0, 2),
+                                origin: square,
+                                destination: Square::new(0, 2),
                                 captured: None,
                                 promotion: None,
                                 previous_castlings: self.castlings.clone(),
@@ -280,7 +280,7 @@ impl State {
                         // that the king itself is not in check when the move
                         // initiates.
 
-                        let king = self.board[position.row as usize][position.column as usize].expect("king should be on the square");
+                        let king = self.board[square.row as usize][square.column as usize].expect("king should be on the square");
                         self.board[0][5] = Some(king);
                         let in_check = self.in_check();
                         self.board[0][5] = None;
@@ -288,8 +288,8 @@ impl State {
                         if !in_check {
                             moves.push(Move {
                                 t: MoveType::Castle,
-                                origin: position,
-                                destination: Position::new(0, 6),
+                                origin: square,
+                                destination: Square::new(0, 6),
                                 captured: None,
                                 promotion: None,
                                 previous_castlings: self.castlings.clone(),
@@ -302,8 +302,8 @@ impl State {
         };
     }
 
-    pub fn offsets_move(&self, moves: &mut Vec<Move>, position: Position, offsets: Vec<Position>){
-        let destinations = offsets.iter().map(|offset| position + *offset).filter(|destination| {
+    pub fn offsets_move(&self, moves: &mut Vec<Move>, square: Square, offsets: Vec<Square>){
+        let destinations = offsets.iter().map(|offset| square + *offset).filter(|destination| {
             if !destination.is_valid() {
                 return false;
             }
@@ -318,7 +318,7 @@ impl State {
         for destination in destinations {
             moves.push(Move {
                 t: MoveType::Normal,
-                origin: position,
+                origin: square,
                 destination,
                 captured: self.board[destination.row as usize][destination.column as usize],
                 promotion: None,
@@ -328,15 +328,15 @@ impl State {
         }
     }
 
-    pub fn sliding_move(&self, moves: &mut Vec<Move>, position: Position, slides: Vec<Position>) {
+    pub fn sliding_move(&self, moves: &mut Vec<Move>, square: Square, slides: Vec<Square>) {
         for slide in slides {
             let offset = slide;
 
-            let mut current = position + offset;
+            let mut current = square + offset;
             while current.is_valid() && self.board[current.row as usize][current.column as usize].is_none() {
                 moves.push(Move {
                     t: MoveType::Normal,
-                    origin: position,
+                    origin: square,
                     destination: current,
                     captured: None,
                     promotion: None,
@@ -351,7 +351,7 @@ impl State {
                 if let Some(captured) = self.board[current.row as usize][current.column as usize] && captured.color != self.current_player {
                     moves.push(Move {
                         t: MoveType::Normal,
-                        origin: position,
+                        origin: square,
                         destination: current,
                         captured: Some(captured),
                         promotion: None,
@@ -370,7 +370,7 @@ impl State {
         for row in 0..8 {
             for col in 0..8 {
                 if let Some(piece) = self.board[row][col] && piece.color == self.current_player {
-                    self.piece_move(&mut next_moves, Position::new(row as i32, col as i32), piece);
+                    self.piece_move(&mut next_moves, Square::new(row as i32, col as i32), piece);
                 }
             }
         }
@@ -395,7 +395,7 @@ impl State {
         if m.t == MoveType::Castle {
             if self.current_player == Color::White {
                 // White queen-side
-                if m.destination == Position::new(7, 2) {
+                if m.destination == Square::new(7, 2) {
                     let rook = self.board[7][0].take().expect("position should have a rook");
                     self.board[7][3] = Some(rook);
                 }
@@ -407,7 +407,7 @@ impl State {
                 self.castlings.retain(|piece| piece.color != Color::White);
             } else {
                 // Black queen-side
-                if m.destination == Position::new(0, 2) {
+                if m.destination == Square::new(0, 2) {
                     let rook = self.board[0][0].take().expect("position should have a rook");
                     self.board[0][3] = Some(rook);
                 }
@@ -421,7 +421,7 @@ impl State {
         }
         // The en-passant square has to be set if this is a two-square move
         else if m.t == MoveType::TwoSquare {
-            self.en_passant = Some(Position::new((m.origin.row + m.destination.row) / 2, m.origin.column));
+            self.en_passant = Some(Square::new((m.origin.row + m.destination.row) / 2, m.origin.column));
         }
         else if m.t == MoveType::EnPassant {
             self.board[m.origin.row as usize][m.destination.column as usize] = None;
@@ -429,27 +429,27 @@ impl State {
         // Remove castling abilities if king or rook are moving
         else {
             // White king movement
-            if m.origin == Position::new(7, 4) {
+            if m.origin == Square::new(7, 4) {
                 self.castlings.retain(|piece| piece.color != Color::White);
             }
             // Black king movement
-            else if m.origin == Position::new(0, 4) {
+            else if m.origin == Square::new(0, 4) {
                 self.castlings.retain(|piece| piece.color != Color::Black);
             }
             // White queen-side rook movement
-            else if m.origin == Position::new(7, 0) {
+            else if m.origin == Square::new(7, 0) {
                 self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::Queen);
             }
             // White king-side rook movement
-            else if m.origin == Position::new(7, 7) {
+            else if m.origin == Square::new(7, 7) {
                 self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::King);
             }
             // Black queen-side rook movement
-            else if m.origin == Position::new(0, 0) {
+            else if m.origin == Square::new(0, 0) {
                 self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::Queen);
             }
             // Black king-side rook movement
-            else if m.origin == Position::new(0, 7) {
+            else if m.origin == Square::new(0, 7) {
                 self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::King);
             }
         }
@@ -461,16 +461,16 @@ impl State {
         // We have to prevent future castlings if a rook is captured
         if let Some(captured) = m.captured {
             if captured.t == PieceType::Rook {
-                if m.destination == Position::new(7, 0) {
+                if m.destination == Square::new(7, 0) {
                     self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::Queen);
                 }
-                if m.destination == Position::new(7, 7) {
+                if m.destination == Square::new(7, 7) {
                     self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::King);
                 }
-                if m.destination == Position::new(0, 0) {
+                if m.destination == Square::new(0, 0) {
                     self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::Queen);
                 }
-                if m.destination == Position::new(0, 7) {
+                if m.destination == Square::new(0, 7) {
                     self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::King);
                 }
             } else if captured.t == PieceType::King {
@@ -499,7 +499,7 @@ impl State {
         if m.t == MoveType::Castle {
             if self.current_player == Color::White {
                 // White queen-side
-                if m.destination == Position::new(7, 2) {
+                if m.destination == Square::new(7, 2) {
                     let rook = self.board[7][3].take().expect("position should have a rook");
                     self.board[7][0] = Some(rook);
                 }
@@ -510,7 +510,7 @@ impl State {
                 }
             } else {
                 // Black queen-side
-                if m.destination == Position::new(0, 2) {
+                if m.destination == Square::new(0, 2) {
                     let rook = self.board[0][3].take().expect("position should have a rook");
                     self.board[0][0] = Some(rook);
                 }

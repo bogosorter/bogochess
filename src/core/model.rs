@@ -1,34 +1,34 @@
-mod position_impl;
+mod square_impl;
 mod piece_impl;
 mod color_impl;
 
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct State {
+pub struct Position {
     pub board: Board,
     pub ended: bool,
     pub current_player: Color,
     pub castlings: Vec<Piece>,
-    pub en_passant: Option<Position>,
+    pub en_passant: Option<Square>,
     pub halfmoves: u32
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Move {
     pub t: MoveType,
-    pub origin: Position,
-    pub destination: Position,
+    pub origin: Square,
+    pub destination: Square,
     pub captured: Option<Piece>,
     pub promotion: Option<PieceType>,
     pub previous_castlings: Vec<Piece>,
-    pub previous_en_passant: Option<Position>
+    pub previous_en_passant: Option<Square>
 }
 
 // Position not only represents valid chess positions but also offsets, which
 // may include negative values. That is explains why the type of each of the
 // coordinates is i32 and why there is an is_valid function.
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub struct Position {
+pub struct Square {
     pub row: i32,
     pub column: i32
 }

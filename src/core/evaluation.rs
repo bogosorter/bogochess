@@ -1,7 +1,7 @@
-use crate::core::model::{State, Move, PieceType, Color};
+use crate::core::model::{Position, Move, PieceType, Color};
 use std::cmp::Ordering;
 
-impl State {
+impl Position {
     pub fn value(&self) -> f32 {
         // All scores are calculated from white's perspective, and inverted if needed
 

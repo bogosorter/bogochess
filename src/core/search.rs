@@ -1,4 +1,4 @@
-use crate::core::model::{State, Move};
+use crate::core::model::{Position, Move};
 
 use std::cmp::Ordering;
 use std::time::{Instant, Duration};
@@ -24,7 +24,7 @@ pub struct SearchStatistics {
 }
 
 
-impl State {
+impl Position {
     pub fn search(&mut self, options: &SearchOptions) -> Option<Move> {
         let (_, m) = iterative_deepening(self, options, &mut SearchStatistics::new());
         m
@@ -32,9 +32,9 @@ impl State {
 }
 
 
-fn iterative_deepening(state: &mut State, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
+fn iterative_deepening(position: &mut Position, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
     let start = Instant::now();
-    let search_time = options.search_time(state.current_player);
+    let search_time = options.search_time(position.current_player);
     let deadline = start + Duration::from_millis(search_time as u64);
 
     let mut i = 1;
@@ -44,7 +44,7 @@ fn iterative_deepening(state: &mut State, options: &SearchOptions, statistics: &
 
     while Instant::now() < deadline {
         let mut options = AlphaBetaOptions {
-            state: state,
+            position,
             max_depth: i,
             deadline,
             statistics: statistics,
@@ -74,7 +74,7 @@ fn iterative_deepening(state: &mut State, options: &SearchOptions, statistics: &
 
 
 pub struct AlphaBetaOptions<'a> {
-    pub state: &'a mut State,
+    pub position: &'a mut Position,
     pub max_depth: u32,
     pub deadline: Instant,
     pub statistics: &'a mut SearchStatistics,
@@ -88,8 +88,8 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
         return None
     }
 
-    if options.state.ended {
-        return Some((None, options.state.value()));
+    if options.position.ended {
+        return Some((None, options.position.value()));
     }
 
     // End of normal search, pass on to quiescent search
@@ -99,24 +99,24 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
 
     options.statistics.nodes += 1;
 
-    let mut moves = options.state.moves();
+    let mut moves = options.position.moves();
 
     // Look for check-mate or stalemate
     if moves.is_empty() {
-        let score = if options.state.in_check() { -1.0 } else { 0.0 };
+        let score = if options.position.in_check() { -1.0 } else { 0.0 };
         return Some((None, score));
     }
 
     let mut best_move = None;
     let mut best_score = f32::MIN;
-    moves.sort_by(|a, b| compare_moves(&options.history[options.state.current_player as usize], a, b));
+    moves.sort_by(|a, b| compare_moves(&options.history[options.position.current_player as usize], a, b));
 
     for m in moves {
-        options.state.apply(&m);
+        options.position.apply(&m);
         // We invert alpha and beta since the next player expects scores
         // according to his perspective
         let (_, score) = alphabeta(options, depth + 1, -beta, -alpha)?;
-        options.state.undo(&m);
+        options.position.undo(&m);
 
         // Scores are returned from the next player's perspective, so we have to
         // invert them
@@ -133,7 +133,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
                 let update = (options.max_depth - depth + 1) * (options.max_depth - depth + 1);
                 let from = best_move.as_ref().unwrap().origin.index();
                 let to = best_move.as_ref().unwrap().destination.index();
-                options.history[options.state.current_player as usize][from][to] += update;
+                options.history[options.position.current_player as usize][from][to] += update;
 
                 return Some((best_move, score));
             }
@@ -149,15 +149,15 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
     options.statistics.nodes += 1;
     options.statistics.selective_depth =  options.statistics.selective_depth.max(depth);
 
-    if options.state.ended {
-        return (None, options.state.value());
+    if options.position.ended {
+        return (None, options.position.value());
     }
 
-    let mut moves = options.state.moves();
+    let mut moves = options.position.moves();
 
     // Look for check-mate or stalemate
     if moves.is_empty() {
-        let score = if options.state.in_check() { -1.0 } else { 0.0 };
+        let score = if options.position.in_check() { -1.0 } else { 0.0 };
         return (None, score);
     }
 
@@ -165,25 +165,25 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
 
     // If there are no moves with captures, the quiescent search should be ended
     if moves.is_empty() {
-        return (None, options.state.value());
+        return (None, options.position.value());
     }
 
     let mut best_move = None;
-    let mut best_score = options.state.value(); // stand-pat score
+    let mut best_score = options.position.value(); // stand-pat score
     alpha = alpha.max(best_score);
 
     if best_score >= beta {
         return (None, best_score);
     }
 
-    moves.sort_by(|a, b| compare_moves(&options.history[options.state.current_player as usize], a, b));
+    moves.sort_by(|a, b| compare_moves(&options.history[options.position.current_player as usize], a, b));
 
     for m in moves {
-        options.state.apply(&m);
+        options.position.apply(&m);
         // We invert alpha and beta since the next player expects scores
         // according to his perspective
         let (_, score) = quiescent(options, depth + 1, -beta, -alpha);
-        options.state.undo(&m);
+        options.position.undo(&m);
 
         // Scores are returned from the next player's perspective, so we have to
         // invert them
@@ -199,7 +199,7 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
                 // Update the history table according to the history heuristics
                 let from = best_move.as_ref().unwrap().origin.index();
                 let to = best_move.as_ref().unwrap().destination.index();
-                options.history[options.state.current_player as usize][from][to] += 1;
+                options.history[options.position.current_player as usize][from][to] += 1;
 
                 return (best_move, score);
             }

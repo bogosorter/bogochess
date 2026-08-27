@@ -10,8 +10,8 @@ use bogochess::utils::perft;
 
 
 fn test(position: &str, depth: u32, expected: u32) {
-    let mut state = fen::parse(position).unwrap();
-    let result = perft::perft(&mut state, depth);
+    let mut position = fen::parse(position).unwrap();
+    let result = perft::perft(&mut position, depth);
     assert_eq!(result, expected)
 }
 

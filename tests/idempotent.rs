@@ -3,28 +3,28 @@
 // Sources: https://chessprogramming.org/Perft_Results
 
 
-use bogochess::core::model::State;
+use bogochess::core::model::Position;
 use bogochess::uci::fen;
 
 fn test(position: &str, depth: u32) {
-    let mut state = fen::parse(position).unwrap();
-    idempotent(&mut state, depth);
+    let mut position = fen::parse(position).unwrap();
+    idempotent(&mut position, depth);
 }
 
-fn idempotent(state: &mut State, depth: u32) {
-    if depth == 0 || state.ended == false {
+fn idempotent(position: &mut Position, depth: u32) {
+    if depth == 0 || position.ended == false {
         return;
     }
 
-    for m in state.moves() {
-        let before = state.clone();
-        state.apply(&m);
-        state.undo(&m);
-        assert_eq!(&before, state);
+    for m in position.moves() {
+        let before = position.clone();
+        position.apply(&m);
+        position.undo(&m);
+        assert_eq!(&before, position);
 
-        state.apply(&m);
-        idempotent(state, depth - 1);
-        state.undo(&m);
+        position.apply(&m);
+        idempotent(position, depth - 1);
+        position.undo(&m);
     }
 }
 

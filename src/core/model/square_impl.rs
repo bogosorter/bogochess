@@ -1,9 +1,9 @@
-use crate::core::model::Position;
+use crate::core::model::Square;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
-impl Position {
-    pub fn new(row: i32, column: i32) -> Position {
-        Position {row, column}
+impl Square {
+    pub fn new(row: i32, column: i32) -> Square {
+        Square {row, column}
     }
 
     pub fn index(&self) -> usize {
@@ -15,35 +15,35 @@ impl Position {
     }
 }
 
-impl Add for Position {
+impl Add for Square {
     type Output = Self;
-    fn add(self, other: Position) -> Position {
-        Position {
+    fn add(self, other: Square) -> Square {
+        Square {
             row: self.row + other.row,
             column: self.column + other.column
         }
     }
 }
 
-impl AddAssign for Position {
-    fn add_assign(&mut self, other: Position) {
+impl AddAssign for Square {
+    fn add_assign(&mut self, other: Square) {
         self.row += other.row;
         self.column += other.column;
     }
 }
 
-impl Sub for Position {
+impl Sub for Square {
     type Output = Self;
-    fn sub(self, other: Position) -> Position {
-        Position {
+    fn sub(self, other: Square) -> Square {
+        Square {
             row: self.row - other.row,
             column: self.column - other.column
         }
     }
 }
 
-impl SubAssign for Position {
-    fn sub_assign(&mut self, other: Position) {
+impl SubAssign for Square {
+    fn sub_assign(&mut self, other: Square) {
         self.row -= other.row;
         self.column -= other.column;
     }

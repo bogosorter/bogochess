@@ -1,7 +1,7 @@
 // Benchmarks the alpha-beta pruning algorithm on various positions and depths.
 // Source: https://chessprogramming.org/Perft_Results
 
-use bogochess::core::model::{State};
+use bogochess::core::model::{Position};
 use bogochess::core::search::{self, SearchStatistics, AlphaBetaOptions};
 use bogochess::uci::fen;
 
@@ -9,10 +9,10 @@ use std::time::{Instant, Duration};
 
 
 fn benchmark(name: &str, position: &str, depth: u32) {
-    let mut state = fen::parse(position).unwrap();
+    let mut position = fen::parse(position).unwrap();
 
     let mut statistics = SearchStatistics::new();
-    iterative_deepening(&mut state, depth, &mut statistics);
+    iterative_deepening(&mut position, depth, &mut statistics);
 
     let nps = statistics.nodes * 1000000 / (statistics.search_time as i64 + 1);
     println!("{}, {} nodes analyzed, {} nps", name, statistics.nodes, nps);
@@ -22,7 +22,7 @@ fn benchmark(name: &str, position: &str, depth: u32) {
 // Instead of the normal iterative deepening, whose depth is unlimited, we use a
 // limited version to compare different versions.
 
-fn iterative_deepening(state: &mut State, depth: u32, statistics: &mut SearchStatistics) {
+fn iterative_deepening(position: &mut Position, depth: u32, statistics: &mut SearchStatistics) {
     // 100 years from now (infinite deadline)
     let start = Instant::now();
     let deadline = start + Duration::from_secs(365 * 86400 * 100);
@@ -30,7 +30,7 @@ fn iterative_deepening(state: &mut State, depth: u32, statistics: &mut SearchSta
 
     for i in 1..=depth {
         let mut options = AlphaBetaOptions {
-            state: state,
+            position,
             max_depth: i,
             deadline,
             statistics: statistics,
