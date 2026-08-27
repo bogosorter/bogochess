@@ -63,6 +63,9 @@ fn main() {
     benchmark("initial_4", INITIAL_FEN, 4, &mut state);
     benchmark("initial_5", INITIAL_FEN, 5, &mut state);
     benchmark("initial_6", INITIAL_FEN, 6, &mut state);
+    benchmark("initial_7", INITIAL_FEN, 7, &mut state);
+    benchmark("initial_8", INITIAL_FEN, 8, &mut state);
+    benchmark("initial_9", INITIAL_FEN, 9, &mut state);
     benchmark("kiwipete_1", KIWIPETE, 1, &mut state);
     benchmark("kiwipete_2", KIWIPETE, 2, &mut state);
     benchmark("kiwipete_3", KIWIPETE, 2, &mut state);

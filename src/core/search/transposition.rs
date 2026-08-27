@@ -8,7 +8,8 @@ pub struct TranspositionTable {
     items: u32,
     mask: u64,
     zobrist: ZobristValues,
-    table: Box<[Option<TranspositionEntry>]>
+    depth_table: Box<[Option<TranspositionEntry>]>,
+    fresh_table: Box<[Option<TranspositionEntry>]>
 }
 
 impl TranspositionTable {
@@ -25,32 +26,50 @@ impl TranspositionTable {
                 castling: std::array::from_fn(|_| rng.random()),
                 en_passant: std::array::from_fn(|_| rng.random())
             },
-            table: std::iter::repeat_with(|| None).take(size as usize).collect::<Vec<_>>().into_boxed_slice()
+            depth_table: std::iter::repeat_with(|| None).take(size as usize).collect::<Vec<_>>().into_boxed_slice(),
+            fresh_table: std::iter::repeat_with(|| None).take(size as usize).collect::<Vec<_>>().into_boxed_slice()
         }
     }
 
     pub fn get(&self, hash: u64, depth: i32) -> Option<&TranspositionEntry> {
-        if let Some(entry) = self.table[(hash & self.mask) as usize].as_ref() && entry.hash == hash && entry.depth >= depth {
-            Some(entry)
-        } else {
-            None
+        if let Some(entry) = self.depth_table[(hash & self.mask) as usize].as_ref() && entry.hash == hash && entry.depth >= depth {
+           return Some(entry);
         }
+        if let Some(entry) = self.fresh_table[(hash & self.mask) as usize].as_ref() && entry.hash == hash && entry.depth >= depth {
+           return Some(entry);
+        }
+        None
     }
 
     pub fn insert(&mut self, hash: u64, depth: i32, value: f32, best_move: &Option<Move>, t: TranspositionType) {
         let position = (hash & self.mask) as usize;
 
-        if self.table[position].is_none() {
-            self.items += 1;
-        }
+        if let Some(entry) = self.depth_table[position].as_ref() && entry.depth > depth {
+            if self.fresh_table[position].is_none() {
+                self.items += 1;
+            }
 
-        self.table[position] = Some(TranspositionEntry {
-            hash,
-            depth: depth,
-            value,
-            best_move: best_move.clone(),
-            t
-        });
+            self.fresh_table[position] = Some(TranspositionEntry {
+                hash,
+                depth: depth,
+                value,
+                best_move: best_move.clone(),
+                t
+            });
+        } else {
+            if self.depth_table[position].is_none() {
+                self.items += 1;
+            }
+
+            self.items += 1;
+            self.depth_table[position] = Some(TranspositionEntry {
+                hash,
+                depth: depth,
+                value,
+                best_move: best_move.clone(),
+                t
+            });
+        }
     }
 
     pub fn hash(&self, position: &Position) -> u64 {
@@ -74,7 +93,7 @@ impl TranspositionTable {
     }
 
     pub fn load(&self) -> f32 {
-        self.items as f32 / self.size as f32
+        self.items as f32 / self.size as f32 / 2.0
     }
 }
 
