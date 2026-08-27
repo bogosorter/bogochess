@@ -1,8 +1,9 @@
+use bogochess::core::model::State;
 use bogochess::uci::commands::{self, GUICommand};
 use std::io;
 
 fn main() {
-    let mut position = None;
+    let mut state = State::new();
 
     loop {
         let mut command = String::new();
@@ -11,7 +12,7 @@ fn main() {
         // Per the standard, unrecognized commands are simply ignored
         match commands::parse(&command) {
             Some(GUICommand::Quit) => break,
-            Some(command) => if let Some(answer) = commands::process(command, &mut position) {
+            Some(command) => if let Some(answer) = commands::process(command, &mut state) {
                 println!("{answer}");
             },
             None => continue

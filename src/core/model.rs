@@ -1,14 +1,21 @@
+mod state_impl;
+mod position_impl;
 mod square_impl;
 mod piece_impl;
 mod color_impl;
 
+
+pub struct State {
+    pub position: Option<Position>,
+    pub zobrist: ZobristValues
+}
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Position {
     pub board: Board,
     pub ended: bool,
     pub current_player: Color,
-    pub castlings: Vec<Piece>,
+    pub castling: Castling,
     pub en_passant: Option<Square>,
     pub halfmoves: u32
 }
@@ -20,7 +27,7 @@ pub struct Move {
     pub destination: Square,
     pub captured: Option<Piece>,
     pub promotion: Option<PieceType>,
-    pub previous_castlings: Vec<Piece>,
+    pub previous_castling: Castling,
     pub previous_en_passant: Option<Square>
 }
 
@@ -57,14 +64,14 @@ pub enum Color {
     Black
 }
 
-pub struct Castling {
-    pub t: CastlingType,
-    pub color: Color
-}
-
-pub enum CastlingType {
-    KingSide,
-    QueenSide
+bitflags::bitflags! {
+    #[derive(PartialEq, Eq, Clone, Debug)]
+    pub struct Castling: u8 {
+        const WhiteQueen = 0b0001;
+        const WhiteKing = 0b0010;
+        const BlackQueen = 0b0100;
+        const BlackKing = 0b1000;
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -73,4 +80,11 @@ pub enum MoveType {
     EnPassant,
     Castle,
     TwoSquare
+}
+
+pub struct ZobristValues {
+    pub piece_square: [[[[u64; 2]; 6]; 8]; 8],
+    pub current_player: [u64; 2],
+    pub castling: [u64; 16],
+    pub en_passant: [u64; 8]
 }

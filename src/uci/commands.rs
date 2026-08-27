@@ -1,4 +1,4 @@
-use crate::core::model::{Position, Move};
+use crate::core::model::{State, Position, Move};
 use crate::core::search::{SearchOptions, SearchStatistics};
 use crate::uci::fen::{self, INITIAL_FEN};
 use crate::utils::perft;
@@ -33,24 +33,24 @@ pub fn parse(command: &str) -> Option<GUICommand> {
     }
 }
 
-pub fn process<'a>(command: GUICommand, position: &mut Option<Position>) -> Option<EngineCommand<'a>> {
+pub fn process<'a>(command: GUICommand, state: &mut State) -> Option<EngineCommand<'a>> {
     match command {
         GUICommand::UCI => Some(EngineCommand::UCIOK),
         GUICommand::IsReady => Some(EngineCommand::ReadyOK),
 
         GUICommand::Position(p) => {
-            *position = Some(p);
+            state.position = Some(p);
             None
         },
 
         GUICommand::Perft(depth) =>
-            if let Some(p) = position {
+            if let Some(p) = state.position.as_mut() {
                 perft::perft(p, depth);
                 None
             } else { None },
 
         GUICommand::Go(options) =>
-            if let Some(p) = position && let Some(m) = p.search(&options) {
+            if let Some(p) = state.position.as_mut() && let Some(m) = p.search(&options) {
                 Some(EngineCommand::BestMove(m))
             } else { None },
 

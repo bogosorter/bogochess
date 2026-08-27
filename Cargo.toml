@@ -6,6 +6,7 @@ authors = ["bogosorter"]
 
 [dependencies]
 approx = "0.5.1"
+bitflags = "2.13.1"
 rand = "0.10.2"
 
 [[bench]]

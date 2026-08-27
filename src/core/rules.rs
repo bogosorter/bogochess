@@ -39,7 +39,7 @@ impl Position {
                                 destination: new_position,
                                 captured: None,
                                 promotion: Some(promoted_type),
-                                previous_castlings: self.castlings.clone(),
+                                previous_castling: self.castling.clone(),
                                 previous_en_passant: self.en_passant
                             });
                         }
@@ -50,7 +50,7 @@ impl Position {
                             destination: new_position,
                             captured: None,
                             promotion: None,
-                            previous_castlings: self.castlings.clone(),
+                            previous_castling: self.castling.clone(),
                             previous_en_passant: self.en_passant
                         });
                     }
@@ -65,7 +65,7 @@ impl Position {
                                 destination: new_position,
                                 captured: None,
                                 promotion: None,
-                                previous_castlings: self.castlings.clone(),
+                                previous_castling: self.castling.clone(),
                                 previous_en_passant: self.en_passant
                             });
                         }
@@ -86,7 +86,7 @@ impl Position {
                                     destination: new_position,
                                     captured: Some(captured),
                                     promotion: Some(promoted_type),
-                                    previous_castlings: self.castlings.clone(),
+                                    previous_castling: self.castling.clone(),
                                     previous_en_passant: self.en_passant
                                 });
                             }
@@ -97,7 +97,7 @@ impl Position {
                                 destination: new_position,
                                 captured: Some(captured),
                                 promotion: None,
-                                previous_castlings: self.castlings.clone(),
+                                previous_castling: self.castling.clone(),
                                 previous_en_passant: self.en_passant
                             });
                         }
@@ -112,7 +112,7 @@ impl Position {
                                 destination: new_position,
                                 captured: None,
                                 promotion: None,
-                                previous_castlings: self.castlings.clone(),
+                                previous_castling: self.castling.clone(),
                                 previous_en_passant: self.en_passant
                             });
                         }
@@ -187,7 +187,7 @@ impl Position {
                 self.offsets_move(&mut moves, square, offsets);
 
                 // White castling queen-side
-                if self.current_player == Color::White && self.castlings.contains(&Piece::new(PieceType::Queen, Color::White)) {
+                if self.current_player == Color::White && self.castling.contains(Castling::WhiteQueen) {
                     if self.board[7][1].is_none() && self.board[7][2].is_none() && self.board[7][3].is_none() {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -208,14 +208,14 @@ impl Position {
                                 destination: Square::new(7, 2),
                                 captured: None,
                                 promotion: None,
-                                previous_castlings: self.castlings.clone(),
+                                previous_castling: self.castling.clone(),
                                 previous_en_passant: self.en_passant
                             });
                         }
                     }
                 }
                 // White castling king-side
-                if self.current_player == Color::White && self.castlings.contains(&Piece::new(PieceType::King, Color::White)) {
+                if self.current_player == Color::White && self.castling.contains(Castling::WhiteKing) {
                     if self.board[7][5].is_none() && self.board[7][6].is_none() {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -236,14 +236,14 @@ impl Position {
                                 destination: Square::new(7, 6),
                                 captured: None,
                                 promotion: None,
-                                previous_castlings: self.castlings.clone(),
+                                previous_castling: self.castling.clone(),
                                 previous_en_passant: self.en_passant
                             });
                         }
                     }
                 }
                 // Black castling queen-side
-                if self.current_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::Queen, Color::Black)) {
+                if self.current_player == Color::Black && self.castling.contains(Castling::BlackQueen) {
                     if self.board[0][1].is_none() && self.board[0][2].is_none() && self.board[0][3].is_none() {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -264,14 +264,14 @@ impl Position {
                                 destination: Square::new(0, 2),
                                 captured: None,
                                 promotion: None,
-                                previous_castlings: self.castlings.clone(),
+                                previous_castling: self.castling.clone(),
                                 previous_en_passant: self.en_passant
                             });
                         }
                     }
                 }
                 // Black castling king-side
-                if self.current_player == Color::Black && self.castlings.contains(&Piece::new(PieceType::King, Color::Black)) {
+                if self.current_player == Color::Black && self.castling.contains(Castling::BlackKing) {
                     if self.board[0][5].is_none() && self.board[0][6].is_none() {
                         // To prevent castling while the passing square is in
                         // check, we insert the king into the intermediate
@@ -292,7 +292,7 @@ impl Position {
                                 destination: Square::new(0, 6),
                                 captured: None,
                                 promotion: None,
-                                previous_castlings: self.castlings.clone(),
+                                previous_castling: self.castling.clone(),
                                 previous_en_passant: self.en_passant
                             });
                         }
@@ -322,7 +322,7 @@ impl Position {
                 destination,
                 captured: self.board[destination.row as usize][destination.column as usize],
                 promotion: None,
-                previous_castlings: self.castlings.clone(),
+                previous_castling: self.castling.clone(),
                 previous_en_passant: self.en_passant
             });
         }
@@ -340,7 +340,7 @@ impl Position {
                     destination: current,
                     captured: None,
                     promotion: None,
-                    previous_castlings: self.castlings.clone(),
+                    previous_castling: self.castling.clone(),
                     previous_en_passant: self.en_passant
                 });
                 current += offset;
@@ -355,7 +355,7 @@ impl Position {
                         destination: current,
                         captured: Some(captured),
                         promotion: None,
-                        previous_castlings: self.castlings.clone(),
+                        previous_castling: self.castling.clone(),
                         previous_en_passant: self.en_passant
                     });
                 }
@@ -404,7 +404,7 @@ impl Position {
                     let rook = self.board[7][7].take().expect("position should have a rook");
                     self.board[7][5] = Some(rook);
                 }
-                self.castlings.retain(|piece| piece.color != Color::White);
+                self.castling.remove(Castling::WhiteQueen | Castling::WhiteKing);
             } else {
                 // Black queen-side
                 if m.destination == Square::new(0, 2) {
@@ -416,7 +416,7 @@ impl Position {
                     let rook = self.board[0][7].take().expect("position should have a rook");
                     self.board[0][5] = Some(rook);
                 }
-                self.castlings.retain(|piece| piece.color != Color::Black);
+                self.castling.remove(Castling::BlackQueen | Castling::BlackKing);
             }
         }
         // The en-passant square has to be set if this is a two-square move
@@ -430,27 +430,27 @@ impl Position {
         else {
             // White king movement
             if m.origin == Square::new(7, 4) {
-                self.castlings.retain(|piece| piece.color != Color::White);
+                self.castling.remove(Castling::WhiteQueen | Castling::WhiteKing);
             }
             // Black king movement
             else if m.origin == Square::new(0, 4) {
-                self.castlings.retain(|piece| piece.color != Color::Black);
+                self.castling.remove(Castling::BlackQueen | Castling::BlackKing);
             }
             // White queen-side rook movement
             else if m.origin == Square::new(7, 0) {
-                self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::Queen);
+                self.castling.remove(Castling::WhiteQueen);
             }
             // White king-side rook movement
             else if m.origin == Square::new(7, 7) {
-                self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::King);
+                self.castling.remove(Castling::WhiteKing);
             }
             // Black queen-side rook movement
             else if m.origin == Square::new(0, 0) {
-                self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::Queen);
+                self.castling.remove(Castling::BlackQueen);
             }
             // Black king-side rook movement
             else if m.origin == Square::new(0, 7) {
-                self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::King);
+                self.castling.remove(Castling::BlackKing);
             }
         }
 
@@ -462,16 +462,16 @@ impl Position {
         if let Some(captured) = m.captured {
             if captured.t == PieceType::Rook {
                 if m.destination == Square::new(7, 0) {
-                    self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::Queen);
+                    self.castling.remove(Castling::WhiteQueen);
                 }
                 if m.destination == Square::new(7, 7) {
-                    self.castlings.retain(|piece| piece.color != Color::White || piece.t != PieceType::King);
+                    self.castling.remove(Castling::WhiteKing);
                 }
                 if m.destination == Square::new(0, 0) {
-                    self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::Queen);
+                    self.castling.remove(Castling::BlackQueen);
                 }
                 if m.destination == Square::new(0, 7) {
-                    self.castlings.retain(|piece| piece.color != Color::Black || piece.t != PieceType::King);
+                    self.castling.remove(Castling::BlackKing);
                 }
             } else if captured.t == PieceType::King {
                 self.ended = true;
@@ -530,7 +530,7 @@ impl Position {
             self.board[m.origin.row as usize][m.origin.column as usize] = Some(Piece::new(PieceType::Pawn, piece.color));
         }
 
-        self.castlings = m.previous_castlings.clone();
+        self.castling = m.previous_castling.clone();
         self.en_passant = m.previous_en_passant;
     }
 }

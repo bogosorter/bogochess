@@ -15,10 +15,7 @@ pub fn parse(fen: &str) -> Option<Position> {
         "b" => Color::Black,
         _ => return None
     };
-    let castlings: Vec<Piece> = match words[2] {
-        "-" => Vec::new(),
-        _ => words[2].chars().map(parse_castling_piece).collect::<Option<Vec<Piece>>>()?
-    };
+    let castling = words[2].chars().filter_map(parse_castling_piece).fold(Castling::empty(), |acc, r| acc | r);
     let en_passant = match words[3] {
         "-" => None,
         _ => Some(parse_square(words[3])?)
@@ -29,7 +26,7 @@ pub fn parse(fen: &str) -> Option<Position> {
         board,
         ended: false,
         current_player: active_color,
-        castlings,
+        castling,
         en_passant,
         halfmoves
     })
@@ -85,12 +82,12 @@ fn parse_piece(fen: char) -> Option<Piece> {
     }
 }
 
-fn parse_castling_piece(fen: char) -> Option<Piece> {
+fn parse_castling_piece(fen: char) -> Option<Castling> {
     match fen {
-        'Q' => Some(Piece {t: PieceType::Queen, color: Color::White}),
-        'K' => Some(Piece {t: PieceType::King, color: Color::White}),
-        'q' => Some(Piece {t: PieceType::Queen, color: Color::Black}),
-        'k' => Some(Piece {t: PieceType::King, color: Color::Black}),
+        'Q' => Some(Castling::WhiteQueen),
+        'K' => Some(Castling::WhiteKing),
+        'q' => Some(Castling::BlackQueen),
+        'k' => Some(Castling::BlackKing),
         _ => None
     }
 }
