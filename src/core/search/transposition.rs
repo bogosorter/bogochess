@@ -5,6 +5,7 @@ use rand::rngs::StdRng;
 
 pub struct TranspositionTable {
     size: u32,
+    items: u32,
     mask: u64,
     zobrist: ZobristValues,
     table: Box<[Option<TranspositionEntry>]>
@@ -16,6 +17,7 @@ impl TranspositionTable {
 
         TranspositionTable {
             size,
+            items: 0,
             mask: size as u64 - 1,
             zobrist: ZobristValues {
                 piece_square: std::array::from_fn(|_| std::array::from_fn(|_| std::array::from_fn(|_| std::array::from_fn(|_| rng.random())))),
@@ -36,7 +38,13 @@ impl TranspositionTable {
     }
 
     pub fn insert(&mut self, hash: u64, depth: i32, value: f32, best_move: &Option<Move>, t: TranspositionType) {
-        self.table[(hash & self.mask) as usize] = Some(TranspositionEntry {
+        let position = (hash & self.mask) as usize;
+
+        if self.table[position].is_none() {
+            self.items += 1;
+        }
+
+        self.table[position] = Some(TranspositionEntry {
             hash,
             depth: depth,
             value,
@@ -63,6 +71,10 @@ impl TranspositionTable {
         }
 
         result
+    }
+
+    pub fn load(&self) -> f32 {
+        self.items as f32 / self.size as f32
     }
 }
 

@@ -15,7 +15,7 @@ fn benchmark(name: &str, position: &str, depth: u32) {
     iterative_deepening(&mut position, depth, &mut statistics);
 
     let nps = statistics.nodes * 1000000 / (statistics.search_time as i64 + 1);
-    println!("{}, {} nodes analyzed, {} nps", name, statistics.nodes, nps);
+    println!("{}, {} nodes analyzed, {} nps, {}% tt", name, statistics.nodes, nps, (statistics.transposition_load * 100.0).round());
 }
 
 
@@ -44,6 +44,7 @@ fn iterative_deepening(position: &mut Position, depth: u32, statistics: &mut Sea
     };
 
     statistics.search_time = start.elapsed().as_micros() as u64;
+    statistics.transposition_load = state.tt.load();
 }
 
 

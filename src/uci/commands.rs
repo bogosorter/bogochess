@@ -141,13 +141,14 @@ impl<'a> Display for EngineCommand<'a> {
                 let nps = statistics.nodes * 1000000 / (statistics.search_time as i64);
                 let time = statistics.search_time / 1000; // milliseconds
 
-                write!(f, "info depth {} seldepth {} score cp {} nodes {} nps {} time {}",
+                write!(f, "info depth {} seldepth {} score cp {} nodes {} nps {} time {} hashfull {}",
                     statistics.depth,
                     statistics.selective_depth,
                     (statistics.score * 10000.0).round(),
                     statistics.nodes,
                     nps,
-                    time
+                    time,
+                    (statistics.transposition_load * 1000.0).round()
                 )
             }
         }

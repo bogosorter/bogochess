@@ -22,7 +22,8 @@ pub struct SearchStatistics {
     pub selective_depth: u32,
     pub nodes: i64,
     pub score: f32,
-    pub search_time: u64 // in microseconds
+    pub search_time: u64, // in microseconds
+    pub transposition_load: f32
 }
 
 
@@ -61,6 +62,7 @@ fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, opt
             statistics.depth = i;
             statistics.score = current_score;
             statistics.search_time = start.elapsed().as_micros() as u64;
+            statistics.transposition_load = tt.load();
             println!("{}", statistics);
 
             // There is no need to search further than a checkmate
