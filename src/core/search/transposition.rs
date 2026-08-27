@@ -61,7 +61,6 @@ impl TranspositionTable {
                 self.items += 1;
             }
 
-            self.items += 1;
             self.depth_table[position] = Some(TranspositionEntry {
                 hash,
                 depth: depth,
