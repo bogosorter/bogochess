@@ -53,7 +53,7 @@ fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, zob
             zobrist
         };
 
-        if let Some((new_move, new_score)) = alphabeta(&mut options, i, f32::MIN, f32::MAX) {
+        if let Some((new_move, new_score)) = alphabeta(&mut options, i as i32, f32::MIN, f32::MAX) {
             current_move = new_move;
             current_score = new_score;
 
@@ -85,7 +85,8 @@ pub struct AlphaBetaOptions<'a> {
     pub zobrist: &'a ZobristValues
 }
 
-pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f32) -> Option<(Option<Move>, f32)> {
+pub fn alphabeta(options: &mut AlphaBetaOptions, depth: i32, alpha: f32, beta: f32) -> Option<(Option<Move>, f32)> {
+    options.statistics.nodes += 1;
 
     // End the search earlier if the time has run out
     if Instant::now() > options.deadline {
@@ -97,8 +98,15 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f
     }
 
     let mut best_move = None;
-    let mut best_score = f32::MIN;
-    let mut current_alpha = alpha;
+    let mut best_score = f32::MIN; // Stand-pat score
+    if depth <= 0 {
+        best_score = options.position.value();
+        if best_score >= beta {
+            return Some((None, best_score));
+        }
+    }
+
+    let mut current_alpha = alpha.max(best_score);
     let mut current_beta = beta;
 
     // Try to find the current position on the transposition table
@@ -124,19 +132,22 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f
         best_move = entry.best_move.clone();
     }
 
-    // End of normal search, pass on to quiescent
-    if depth == 0 {
-        return Some(quiescent(options, 0, current_alpha, current_beta));
-    }
-
-    options.statistics.nodes += 1;
-
     let mut moves = options.position.moves();
 
-    // Look for check-mate or stalemate
     if moves.is_empty() {
         let score = if options.position.in_check() { -1.0 } else { 0.0 };
         return Some((None, score));
+    }
+
+    // End of normal search, quiescent mode
+    if depth <= 0 {
+        moves = moves.into_iter().filter(|m| !m.captured.is_none() || !m.promotion.is_none()).collect();
+        options.statistics.selective_depth = options.statistics.selective_depth.max((options.max_depth as i32 - depth) as u32);
+    }
+
+    // Look for check-mate or stalemate
+    if moves.is_empty() {
+        return Some((None, options.position.value()));
     }
 
     moves.sort_by(|a, b| compare_moves(&best_move, &options.history[options.position.current_player as usize], a, b));
@@ -160,12 +171,12 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f
             // minimizing player can do
             if score >= current_beta {
                 // Update the history table according to the history heuristics
-                let update = depth * depth;
+                let update = (depth * depth) as u32;
                 let from = best_move.as_ref().unwrap().origin.index();
                 let to = best_move.as_ref().unwrap().destination.index();
                 options.history[options.position.current_player as usize][from][to] += update;
 
-                options.tt[hash as usize & TRANSPOSITION_MASK] = Some(TranspositionEntry { hash, depth, value: score, best_move: best_move.clone(), t: TranspositionType::LowerBound });
+                options.tt[hash as usize & TRANSPOSITION_MASK] = Some(TranspositionEntry { hash, depth: depth.max(0), value: score, best_move: best_move.clone(), t: TranspositionType::LowerBound });
                 return Some((best_move, score));
             }
 
@@ -173,7 +184,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f
         }
     }
 
-    options.tt[hash as usize & TRANSPOSITION_MASK] = Some(TranspositionEntry { hash, depth, value: best_score, best_move: best_move.clone(), t:
+    options.tt[hash as usize & TRANSPOSITION_MASK] = Some(TranspositionEntry { hash, depth: depth.max(0), value: best_score, best_move: best_move.clone(), t:
         if best_score > alpha {
             TranspositionType::Exact
         } else {
@@ -181,72 +192,6 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f
         }
     });
     Some((best_move, best_score))
-}
-
-pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, beta: f32) -> (Option<Move>, f32) {
-    options.statistics.nodes += 1;
-    options.statistics.selective_depth = options.statistics.selective_depth.max(options.max_depth + depth);
-
-    if options.position.ended {
-        return (None, options.position.value());
-    }
-
-    let mut moves = options.position.moves();
-
-    // Look for check-mate or stalemate
-    if moves.is_empty() {
-        let score = if options.position.in_check() { -1.0 } else { 0.0 };
-        return (None, score);
-    }
-
-    moves = moves.into_iter().filter(|m| !m.captured.is_none() || !m.promotion.is_none()).collect();
-
-    // If there are no moves with captures, the quiescent search should be ended
-    if moves.is_empty() {
-        return (None, options.position.value());
-    }
-
-    let mut best_move = None;
-    let mut best_score = options.position.value(); // stand-pat score
-    alpha = alpha.max(best_score);
-
-    if best_score >= beta {
-        return (None, best_score);
-    }
-
-    moves.sort_by(|a, b| compare_moves(&None, &options.history[options.position.current_player as usize], a, b));
-
-    for m in moves {
-        options.position.apply(&m);
-        // We invert alpha and beta since the next player expects scores
-        // according to his perspective
-        let (_, score) = quiescent(options, depth + 1, -beta, -alpha);
-        options.position.undo(&m);
-
-        // Scores are returned from the next player's perspective, so we have to
-        // invert them
-        let score = -score;
-
-        if score > best_score {
-            best_move = Some(m);
-            best_score = score;
-
-            // Return earlier if the score is better than the worst the
-            // minimizing player can do
-            if score >= beta {
-                // Update the history table according to the history heuristics
-                let from = best_move.as_ref().unwrap().origin.index();
-                let to = best_move.as_ref().unwrap().destination.index();
-                options.history[options.position.current_player as usize][from][to] += 1;
-
-                return (best_move, score);
-            }
-
-            alpha = alpha.max(score);
-        }
-    }
-
-    (best_move, best_score)
 }
 
 fn compare_moves(best_move: &Option<Move>, history: &[[u32; 64]; 64], a: &Move, b: &Move) -> Ordering {

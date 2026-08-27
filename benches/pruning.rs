@@ -41,7 +41,7 @@ fn iterative_deepening(position: &mut Position, depth: u32, statistics: &mut Sea
             zobrist: &state.zobrist
         };
 
-        search::alphabeta(&mut options, i, f32::MIN, f32::MAX);
+        search::alphabeta(&mut options, i as i32, f32::MIN, f32::MAX);
     };
 
     statistics.search_time = start.elapsed().as_micros() as u64;
