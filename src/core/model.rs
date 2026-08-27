@@ -1,5 +1,6 @@
+use crate::core::search::transposition::TranspositionTable;
+
 mod state_impl;
-mod position_impl;
 mod square_impl;
 mod piece_impl;
 mod color_impl;
@@ -7,8 +8,7 @@ mod color_impl;
 
 pub struct State {
     pub position: Option<Position>,
-    pub zobrist: ZobristValues,
-    pub tt: Box<TranspositionTable>
+    pub tt: TranspositionTable
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -81,32 +81,4 @@ pub enum MoveType {
     EnPassant,
     Castle,
     TwoSquare
-}
-
-#[derive(Debug)]
-pub struct ZobristValues {
-    pub piece_square: [[[[u64; 2]; 6]; 8]; 8],
-    pub current_player: [u64; 2],
-    pub castling: [u64; 16],
-    pub en_passant: [u64; 8]
-}
-
-pub const TT_SIZE: usize = 1024 * 1024;
-pub const TRANSPOSITION_MASK: usize = TT_SIZE - 1;
-pub type TranspositionTable = [Option<TranspositionEntry>; TT_SIZE];
-
-#[derive(Debug)]
-pub struct TranspositionEntry {
-    pub hash: u64,
-    pub depth: i32,
-    pub value: f32,
-    pub best_move: Option<Move>,
-    pub t: TranspositionType
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub enum TranspositionType {
-    Exact,
-    UpperBound,
-    LowerBound
 }

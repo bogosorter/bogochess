@@ -37,8 +37,7 @@ fn iterative_deepening(position: &mut Position, depth: u32, statistics: &mut Sea
             deadline,
             statistics: statistics,
             history: &mut history,
-            tt: &mut state.tt,
-            zobrist: &state.zobrist
+            tt: &mut state.tt
         };
 
         search::alphabeta(&mut options, i as i32, f32::MIN, f32::MAX);

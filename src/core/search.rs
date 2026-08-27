@@ -1,8 +1,10 @@
-use crate::core::model::{Move, Position, TRANSPOSITION_MASK, TranspositionEntry, TranspositionTable, TranspositionType, ZobristValues};
+use crate::core::model::{Move, Position};
+use crate::core::search::transposition::{TranspositionTable, TranspositionType};
 
 use std::cmp::Ordering;
 use std::time::{Instant, Duration};
 
+pub mod transposition;
 mod search_options_impl;
 mod search_statistics_impl;
 
@@ -25,14 +27,14 @@ pub struct SearchStatistics {
 
 
 impl Position {
-    pub fn search(&mut self, tt: &mut TranspositionTable, zobrist: &ZobristValues, options: &SearchOptions) -> Option<Move> {
-        let (_, m) = iterative_deepening(self, tt, zobrist, options, &mut SearchStatistics::new());
+    pub fn search(&mut self, tt: &mut TranspositionTable, options: &SearchOptions) -> Option<Move> {
+        let (_, m) = iterative_deepening(self, tt, options, &mut SearchStatistics::new());
         m
     }
 }
 
 
-fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, zobrist: &ZobristValues, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
+fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
     let start = Instant::now();
     let search_time = options.search_time(position.current_player);
     let deadline = start + Duration::from_millis(search_time as u64);
@@ -49,8 +51,7 @@ fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, zob
             deadline,
             statistics: statistics,
             history: &mut history,
-            tt,
-            zobrist
+            tt
         };
 
         if let Some((new_move, new_score)) = alphabeta(&mut options, i as i32, f32::MIN, f32::MAX) {
@@ -81,8 +82,7 @@ pub struct AlphaBetaOptions<'a> {
     pub deadline: Instant,
     pub statistics: &'a mut SearchStatistics,
     pub history: &'a mut [[[u32; 64]; 64]; 2],
-    pub tt: &'a mut TranspositionTable,
-    pub zobrist: &'a ZobristValues
+    pub tt: &'a mut TranspositionTable
 }
 
 pub fn alphabeta(options: &mut AlphaBetaOptions, depth: i32, alpha: f32, beta: f32) -> Option<(Option<Move>, f32)> {
@@ -110,8 +110,8 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: i32, alpha: f32, beta: f
     let mut current_beta = beta;
 
     // Try to find the current position on the transposition table
-    let hash = options.position.hash(options.zobrist);
-    if let Some(entry) = options.tt[(hash as usize) & TRANSPOSITION_MASK].as_ref() && entry.hash == hash && entry.depth >= depth {
+    let hash = options.tt.hash(options.position);
+    if let Some(entry) = options.tt.get(hash, depth) {
         match entry.t {
             TranspositionType::Exact => return Some((entry.best_move.clone(), entry.value)),
             TranspositionType::LowerBound => {
@@ -176,7 +176,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: i32, alpha: f32, beta: f
                 let to = best_move.as_ref().unwrap().destination.index();
                 options.history[options.position.current_player as usize][from][to] += update;
 
-                options.tt[hash as usize & TRANSPOSITION_MASK] = Some(TranspositionEntry { hash, depth: depth.max(0), value: score, best_move: best_move.clone(), t: TranspositionType::LowerBound });
+                options.tt.insert(hash, depth, score, &best_move, TranspositionType::LowerBound);
                 return Some((best_move, score));
             }
 
@@ -184,13 +184,13 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: i32, alpha: f32, beta: f
         }
     }
 
-    options.tt[hash as usize & TRANSPOSITION_MASK] = Some(TranspositionEntry { hash, depth: depth.max(0), value: best_score, best_move: best_move.clone(), t:
+    options.tt.insert(hash, depth, best_score, &best_move,
         if best_score > alpha {
             TranspositionType::Exact
         } else {
             TranspositionType::UpperBound
         }
-    });
+    );
     Some((best_move, best_score))
 }
 
