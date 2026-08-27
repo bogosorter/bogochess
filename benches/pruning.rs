@@ -8,11 +8,11 @@ use bogochess::uci::fen;
 use std::time::{Instant, Duration};
 
 
-fn benchmark(name: &str, position: &str, depth: u32) {
+fn benchmark(name: &str, position: &str, depth: u32, state: &mut State) {
     let mut position = fen::parse(position).unwrap();
 
     let mut statistics = SearchStatistics::new();
-    iterative_deepening(&mut position, depth, &mut statistics);
+    iterative_deepening(&mut position, depth, state, &mut statistics);
 
     let nps = statistics.nodes * 1000000 / (statistics.search_time as i64 + 1);
     println!("{}, {} nodes analyzed, {} nps, {}% tt", name, statistics.nodes, nps, (statistics.transposition_load * 100.0).round());
@@ -22,8 +22,7 @@ fn benchmark(name: &str, position: &str, depth: u32) {
 // Instead of the normal iterative deepening, whose depth is unlimited, we use a
 // limited version to compare different versions.
 
-fn iterative_deepening(position: &mut Position, depth: u32, statistics: &mut SearchStatistics) {
-    let mut state = State::new();
+fn iterative_deepening(position: &mut Position, depth: u32, state: &mut State, statistics: &mut SearchStatistics) {
     let mut history = [[[0; 64]; 64]; 2];
 
     // 100 years from now (infinite deadline)
@@ -57,46 +56,47 @@ const POSITION_5: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 
 const POSITION_6: &str = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
 
 fn main() {
-    benchmark("initial_1", INITIAL_FEN, 1);
-    benchmark("initial_2", INITIAL_FEN, 2);
-    benchmark("initial_3", INITIAL_FEN, 3);
-    benchmark("initial_4", INITIAL_FEN, 4);
-    benchmark("initial_5", INITIAL_FEN, 5);
-    benchmark("initial_6", INITIAL_FEN, 6);
-    benchmark("kiwipete_1", KIWIPETE, 1);
-    benchmark("kiwipete_2", KIWIPETE, 2);
-    benchmark("kiwipete_3", KIWIPETE, 2);
-    benchmark("kiwipete_4", KIWIPETE, 2);
-    benchmark("kiwipete_5", KIWIPETE, 5);
-    benchmark("kiwipete_6", KIWIPETE, 6);
-    benchmark("position_3_1", POSITION_3, 1);
-    benchmark("position_3_2", POSITION_3, 2);
-    benchmark("position_3_3", POSITION_3, 3);
-    benchmark("position_3_4", POSITION_3, 4);
-    benchmark("position_3_5", POSITION_3, 5);
-    benchmark("position_3_6", POSITION_3, 6);
-    benchmark("position_4_1", POSITION_4, 1);
-    benchmark("position_4_2", POSITION_4, 2);
-    benchmark("position_4_3", POSITION_4, 3);
-    benchmark("position_4_4", POSITION_4, 4);
-    benchmark("position_4_5", POSITION_4, 5);
-    benchmark("position_4_6", POSITION_4, 6);
-    benchmark("position_4_mirrored_1", POSITION_4_MIRRORED, 1);
-    benchmark("position_4_mirrored_2", POSITION_4_MIRRORED, 2);
-    benchmark("position_4_mirrored_3", POSITION_4_MIRRORED, 3);
-    benchmark("position_4_mirrored_4", POSITION_4_MIRRORED, 4);
-    benchmark("position_4_mirrored_5", POSITION_4_MIRRORED, 5);
-    benchmark("position_4_mirrored_6", POSITION_4_MIRRORED, 6);
-    benchmark("position_5_1", POSITION_5, 1);
-    benchmark("position_5_2", POSITION_5, 2);
-    benchmark("position_5_3", POSITION_5, 3);
-    benchmark("position_5_4", POSITION_5, 4);
-    benchmark("position_5_5", POSITION_5, 5);
-    benchmark("position_5_6", POSITION_5, 6);
-    benchmark("position_6_1", POSITION_6, 1);
-    benchmark("position_6_2", POSITION_6, 2);
-    benchmark("position_6_3", POSITION_6, 3);
-    benchmark("position_6_4", POSITION_6, 4);
-    benchmark("position_6_5", POSITION_6, 5);
-    benchmark("position_6_6", POSITION_6, 6);
+    let mut state = State::new();
+    benchmark("initial_1", INITIAL_FEN, 1, &mut state);
+    benchmark("initial_2", INITIAL_FEN, 2, &mut state);
+    benchmark("initial_3", INITIAL_FEN, 3, &mut state);
+    benchmark("initial_4", INITIAL_FEN, 4, &mut state);
+    benchmark("initial_5", INITIAL_FEN, 5, &mut state);
+    benchmark("initial_6", INITIAL_FEN, 6, &mut state);
+    benchmark("kiwipete_1", KIWIPETE, 1, &mut state);
+    benchmark("kiwipete_2", KIWIPETE, 2, &mut state);
+    benchmark("kiwipete_3", KIWIPETE, 2, &mut state);
+    benchmark("kiwipete_4", KIWIPETE, 2, &mut state);
+    benchmark("kiwipete_5", KIWIPETE, 5, &mut state);
+    benchmark("kiwipete_6", KIWIPETE, 6, &mut state);
+    benchmark("position_3_1", POSITION_3, 1, &mut state);
+    benchmark("position_3_2", POSITION_3, 2, &mut state);
+    benchmark("position_3_3", POSITION_3, 3, &mut state);
+    benchmark("position_3_4", POSITION_3, 4, &mut state);
+    benchmark("position_3_5", POSITION_3, 5, &mut state);
+    benchmark("position_3_6", POSITION_3, 6, &mut state);
+    benchmark("position_4_1", POSITION_4, 1, &mut state);
+    benchmark("position_4_2", POSITION_4, 2, &mut state);
+    benchmark("position_4_3", POSITION_4, 3, &mut state);
+    benchmark("position_4_4", POSITION_4, 4, &mut state);
+    benchmark("position_4_5", POSITION_4, 5, &mut state);
+    benchmark("position_4_6", POSITION_4, 6, &mut state);
+    benchmark("position_4_mirrored_1", POSITION_4_MIRRORED, 1, &mut state);
+    benchmark("position_4_mirrored_2", POSITION_4_MIRRORED, 2, &mut state);
+    benchmark("position_4_mirrored_3", POSITION_4_MIRRORED, 3, &mut state);
+    benchmark("position_4_mirrored_4", POSITION_4_MIRRORED, 4, &mut state);
+    benchmark("position_4_mirrored_5", POSITION_4_MIRRORED, 5, &mut state);
+    benchmark("position_4_mirrored_6", POSITION_4_MIRRORED, 6, &mut state);
+    benchmark("position_5_1", POSITION_5, 1, &mut state);
+    benchmark("position_5_2", POSITION_5, 2, &mut state);
+    benchmark("position_5_3", POSITION_5, 3, &mut state);
+    benchmark("position_5_4", POSITION_5, 4, &mut state);
+    benchmark("position_5_5", POSITION_5, 5, &mut state);
+    benchmark("position_5_6", POSITION_5, 6, &mut state);
+    benchmark("position_6_1", POSITION_6, 1, &mut state);
+    benchmark("position_6_2", POSITION_6, 2, &mut state);
+    benchmark("position_6_3", POSITION_6, 3, &mut state);
+    benchmark("position_6_4", POSITION_6, 4, &mut state);
+    benchmark("position_6_5", POSITION_6, 5, &mut state);
+    benchmark("position_6_6", POSITION_6, 6, &mut state);
 }
