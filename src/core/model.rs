@@ -98,7 +98,7 @@ pub type TranspositionTable = [Option<TranspositionEntry>; TT_SIZE];
 #[derive(Debug)]
 pub struct TranspositionEntry {
     pub hash: u64,
-    pub depth: u32,
+    pub depth: i32,
     pub value: f32,
     pub best_move: Option<Move>,
     pub t: TranspositionType

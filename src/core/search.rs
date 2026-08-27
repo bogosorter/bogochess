@@ -96,6 +96,8 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f
         return Some((None, options.position.value()));
     }
 
+    let mut best_move = None;
+    let mut best_score = f32::MIN;
     let mut current_alpha = alpha;
     let mut current_beta = beta;
 
@@ -119,6 +121,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f
                 }
             }
         }
+        best_move = entry.best_move.clone();
     }
 
     // End of normal search, pass on to quiescent
@@ -136,9 +139,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, alpha: f32, beta: f
         return Some((None, score));
     }
 
-    let mut best_move = None;
-    let mut best_score = f32::MIN;
-    moves.sort_by(|a, b| compare_moves(&options.history[options.position.current_player as usize], a, b));
+    moves.sort_by(|a, b| compare_moves(&best_move, &options.history[options.position.current_player as usize], a, b));
 
     for m in moves {
         options.position.apply(&m);
@@ -213,7 +214,7 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
         return (None, best_score);
     }
 
-    moves.sort_by(|a, b| compare_moves(&options.history[options.position.current_player as usize], a, b));
+    moves.sort_by(|a, b| compare_moves(&None, &options.history[options.position.current_player as usize], a, b));
 
     for m in moves {
         options.position.apply(&m);
@@ -248,7 +249,16 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, bet
     (best_move, best_score)
 }
 
-fn compare_moves(history: &[[u32; 64]; 64], a: &Move, b: &Move) -> Ordering {
+fn compare_moves(best_move: &Option<Move>, history: &[[u32; 64]; 64], a: &Move, b: &Move) -> Ordering {
+    if let Some(m) = best_move {
+        if m.origin == a.origin && m.destination == a.destination {
+            return Ordering::Less;
+        }
+        if m.origin == b.origin && m.destination == b.destination {
+            return Ordering::Greater;
+        }
+    }
+
     if let Some(ordering) = a.partial_cmp(b) {
         return ordering;
     }
