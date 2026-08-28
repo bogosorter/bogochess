@@ -20,7 +20,7 @@ pub fn parse(fen: &str) -> Option<Position> {
         "-" => None,
         _ => Some(parse_square(words[3])?)
     };
-    let halfmoves = words[4].parse::<u32>().ok()?;
+    let halfmoves = words[4].parse::<u8>().ok()?;
 
     Some(Position {
         board,
@@ -44,42 +44,43 @@ pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<Position> {
 }
 
 fn parse_board(fen: &str) -> Option<Board> {
-    let mut i: usize = 0;
-    let mut j: usize = 0;
-    let mut board = [[None; 8]; 8];
+    let mut position = 54;
+    let mut board = Board::new();
 
     for c in fen.chars() {
         if c.is_numeric() {
-            j += c.to_digit(10).unwrap() as usize;
+            position += c.to_digit(10).unwrap() as usize;
         } else if c == '/' {
-            i += 1;
-            j = 0;
+            position -= 8;
         } else {
-            let piece = parse_piece(c)?;
-            board[i][j] = Some(piece);
-            j += 1;
+            if !parse_piece(&mut board, position, c) {
+                return None
+            }
+            position += 1;
         }
     }
 
     Some(board)
 }
 
-fn parse_piece(fen: char) -> Option<Piece> {
-    match fen {
-        'P' => Some(Piece {t: PieceType::Pawn, color: Color::White}),
-        'N' => Some(Piece {t: PieceType::Knight, color: Color::White}),
-        'B' => Some(Piece {t: PieceType::Bishop, color: Color::White}),
-        'R' => Some(Piece {t: PieceType::Rook, color: Color::White}),
-        'Q' => Some(Piece {t: PieceType::Queen, color: Color::White}),
-        'K' => Some(Piece {t: PieceType::King, color: Color::White}),
-        'p' => Some(Piece {t: PieceType::Pawn, color: Color::Black}),
-        'n' => Some(Piece {t: PieceType::Knight, color: Color::Black}),
-        'b' => Some(Piece {t: PieceType::Bishop, color: Color::Black}),
-        'r' => Some(Piece {t: PieceType::Rook, color: Color::Black}),
-        'q' => Some(Piece {t: PieceType::Queen, color: Color::Black}),
-        'k' => Some(Piece {t: PieceType::King, color: Color::Black}),
-        _ => None
+fn parse_piece(board: &mut Board, position: usize, fen: char) -> bool {
+    if fen.is_uppercase() {
+        board.colors[0] |= 1 << position;
+    } else {
+        board.colors[1] |= 1 << position;
     }
+
+    match fen.to_ascii_uppercase() {
+        'P' => board.pieces[0] |= 1 << position,
+        'N' => board.pieces[1] |= 1 << position,
+        'B' => board.pieces[2] |= 1 << position,
+        'R' => board.pieces[3] |= 1 << position,
+        'Q' => board.pieces[4] |= 1 << position,
+        'K' => board.pieces[5] |= 1 << position,
+        _ => return false
+    }
+
+    true
 }
 
 fn parse_castling_piece(fen: char) -> Option<Castling> {
@@ -92,7 +93,7 @@ fn parse_castling_piece(fen: char) -> Option<Castling> {
     }
 }
 
-fn parse_square(fen: &str) -> Option<Square> {
+fn parse_square(fen: &str) -> Option<usize> {
     if fen.len() != 2 {
         return None
     }
@@ -114,37 +115,17 @@ fn parse_square(fen: &str) -> Option<Square> {
         if value == 0 || value > 8 {
             return None;
         }
-        8 - value
+        value - 1
     } else {
         return None;
     };
 
-    return Some(Square::new(row, column))
+    return Some((row * 8 + column) as usize)
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.promotion {
-            Some(p) => write!(f, "{}{}{}", self.origin, self.destination, p),
-            None => write!(f, "{}{}", self.origin, self.destination)
-        }
-    }
-}
-
-impl Display for Square {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", (b'a' + self.column as u8) as char, 8 - self.row)
-    }
-}
-
-impl Display for Piece {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let t = self.t.to_string();
-
-        match self.color {
-            Color::White => write!(f, "{}", t),
-            Color::Black => write!(f, "{}", t.to_uppercase())
-        }
+        write!(f, "move")
     }
 }
 

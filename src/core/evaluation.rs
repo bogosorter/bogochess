@@ -19,45 +19,45 @@ impl Position {
         let mut white_rooks = 0;
         let mut black_rooks = 0;
 
-        for row in 0..8 {
-            for column in 0..8 {
-                if let Some(piece) = self.board[row][column] {
-                    let s = piece.t.value();
-                    material_score += if piece.color == Color::White { s } else { -s };
-                    material += s;
-
-                    if piece.color == Color::White {
-                        development_score += BONUS_TABLES[piece.t as usize][0][row][column];
-                        endgame_score += BONUS_TABLES[piece.t as usize][1][row][column];
-                    } else {
-                        development_score -= BONUS_TABLES[piece.t as usize][0][7 - row][column];
-                        endgame_score -= BONUS_TABLES[piece.t as usize][1][7 - row][column];
-                    }
-
-                    if piece.t == PieceType::Bishop {
-                        if piece.color == Color::White {
-                            white_bishops += 1;
-                        } else {
-                            black_bishops += 1;
-                        }
-                    } else if piece.t == PieceType::Rook {
-                        if piece.color == Color::White {
-                            white_rooks += 1;
-                        } else {
-                            black_rooks += 1;
-                        }
-                    } else if piece.t == PieceType::King {
-                        if piece.color == self.current_player {
-                            current_king = true;
-                        } else {
-                            other_king = true;
-                        }
-                    }
-
-                }
-            }
-        }
-
+        //for row in 0..8 {
+        //    for column in 0..8 {
+        //        if let Some(piece) = self.board[row][column] {
+        //            let s = piece.t.value();
+        //            material_score += if piece.color == Color::White { s } else { -s };
+        //            material += s;
+//
+        //            if piece.color == Color::White {
+        //                development_score += BONUS_TABLES[piece.t as usize][0][row][column];
+        //                endgame_score += BONUS_TABLES[piece.t as usize][1][row][column];
+        //            } else {
+        //                development_score -= BONUS_TABLES[piece.t as usize][0][7 - row][column];
+        //                endgame_score -= BONUS_TABLES[piece.t as usize][1][7 - row][column];
+        //            }
+//
+        //            if piece.t == PieceType::Bishop {
+        //                if piece.color == Color::White {
+        //                    white_bishops += 1;
+        //                } else {
+        //                    black_bishops += 1;
+        //                }
+        //            } else if piece.t == PieceType::Rook {
+        //                if piece.color == Color::White {
+        //                    white_rooks += 1;
+        //                } else {
+        //                    black_rooks += 1;
+        //                }
+        //            } else if piece.t == PieceType::King {
+        //                if piece.color == self.current_player {
+        //                    current_king = true;
+        //                } else {
+        //                    other_king = true;
+        //                }
+        //            }
+//
+        //        }
+        //    }
+        //}
+//
         if !current_king {
             return -1.0;
         }
@@ -97,12 +97,12 @@ impl Position {
 
 impl PartialOrd for Move {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.promotion != other.promotion {
-            return Some(other.promotion.cmp(&self.promotion));
+        if self.promoted() != other.promoted() {
+            return Some(other.promoted().cmp(&self.promoted()));
         }
 
-        if self.captured != other.captured {
-            return Some(other.captured.cmp(&self.captured));
+        if self.captured() != other.captured() {
+            return Some(other.captured().cmp(&self.captured()));
         }
 
         None

@@ -121,7 +121,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
         }
 
         if alpha >= beta {
-            return Some((entry.best_move.clone(), entry.value));
+            return Some((entry.best_move, entry.value));
         }
     }
 
@@ -161,11 +161,9 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
             if score >= beta {
                 // Update the history table according to the history heuristics
                 let update = (options.max_depth - depth + 1) * (options.max_depth - depth + 1);
-                let from = best_move.as_ref().unwrap().origin.index();
-                let to = best_move.as_ref().unwrap().destination.index();
-                options.history[options.position.current_player as usize][from][to] += update;
+                options.history[options.position.current_player as usize][m.from()][m.to()] += update;
 
-                options.tt.insert(hash, depth, score, &best_move, TranspositionType::LowerBound);
+                options.tt.insert(hash, depth, score, best_move, TranspositionType::LowerBound);
                 return Some((best_move, score));
             }
 
@@ -174,7 +172,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
     }
 
     let transposition_type = if best_score > original_alpha { TranspositionType::Exact } else { TranspositionType::UpperBound };
-    options.tt.insert(hash, depth, best_score, &best_move, transposition_type);
+    options.tt.insert(hash, depth, best_score, best_move, transposition_type);
     Some((best_move, best_score))
 }
 
@@ -196,7 +194,7 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
         if let Some(entry) = options.tt.get(hash, 0) {
             match entry.t {
                 TranspositionType::Exact => {
-                    return (entry.best_move.clone(), entry.value);
+                    return (entry.best_move, entry.value);
                 },
                 TranspositionType::LowerBound => {
                     alpha = alpha.max(entry.value);
@@ -225,7 +223,7 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
         }
     }
 
-    moves = moves.into_iter().filter(|m| !m.captured.is_none() || !m.promotion.is_none()).collect();
+    moves = moves.into_iter().filter(|m| !m.captured().is_none() || !m.promoted().is_none()).collect();
 
     // If there are no moves with captures, the quiescent search should be ended
     if moves.is_empty() {
@@ -253,11 +251,9 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
             // minimizing player can do
             if score >= beta {
                 // Update the history table according to the history heuristics
-                let from = best_move.as_ref().unwrap().origin.index();
-                let to = best_move.as_ref().unwrap().destination.index();
-                options.history[options.position.current_player as usize][from][to] += 1;
+                options.history[options.position.current_player as usize][m.from()][m.to()] += 1;
 
-                options.tt.insert(hash, 0, score, &best_move, TranspositionType::LowerBound);
+                options.tt.insert(hash, 0, score, best_move, TranspositionType::LowerBound);
 
                 return (best_move, score);
             }
@@ -267,7 +263,7 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
     }
 
     let transposition_type = if best_score > original_alpha { TranspositionType::Exact } else { TranspositionType::UpperBound };
-    options.tt.insert(hash, 0, best_score, &best_move, transposition_type);
+    options.tt.insert(hash, 0, best_score, best_move, transposition_type);
 
     (best_move, best_score)
 }
@@ -277,13 +273,8 @@ fn compare_moves(history: &[[u32; 64]; 64], a: &Move, b: &Move) -> Ordering {
         return ordering;
     }
 
-    let a_from = a.origin.index();
-    let a_to = a.destination.index();
-    let a_heuristic = history[a_from][a_to];
+    let a_history = history[a.from()][a.to()];
+    let b_history = history[b.from()][b.to()];
 
-    let b_from = b.origin.index();
-    let b_to = b.destination.index();
-    let b_heuristic = history[b_from][b_to];
-
-    return b_heuristic.cmp(&a_heuristic);
+    return b_history.cmp(&a_history);
 }

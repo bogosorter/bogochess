@@ -41,7 +41,7 @@ impl TranspositionTable {
         None
     }
 
-    pub fn insert(&mut self, hash: u64, depth: u32, value: f32, best_move: &Option<Move>, t: TranspositionType) {
+    pub fn insert(&mut self, hash: u64, depth: u32, value: f32, best_move: Option<Move>, t: TranspositionType) {
         let position = (hash & self.mask) as usize;
 
         if let Some(entry) = self.depth_table[position].as_ref() && entry.depth > depth {
@@ -53,7 +53,7 @@ impl TranspositionTable {
                 hash,
                 depth,
                 value,
-                best_move: best_move.clone(),
+                best_move: best_move,
                 t
             });
         } else {
@@ -65,7 +65,7 @@ impl TranspositionTable {
                 hash,
                 depth,
                 value,
-                best_move: best_move.clone(),
+                best_move: best_move,
                 t
             });
         }
@@ -77,16 +77,16 @@ impl TranspositionTable {
             ^ self.zobrist.castling[position.castling.bits() as usize];
 
         if let Some(square) = position.en_passant {
-            result ^= self.zobrist.en_passant[square.column as usize]
+            result ^= self.zobrist.en_passant[square]
         }
 
-        for row in 0..8 {
-            for column in 0..8 {
-                if let Some(piece) = position.board[row][column] {
-                    result ^= self.zobrist.piece_square[row][column][piece.t as usize][piece.color as usize];
-                }
-            }
-        }
+        //for row in 0..8 {
+        //    for column in 0..8 {
+        //        if let Some(piece) = position.board[row][column] {
+        //            result ^= self.zobrist.piece_square[row][column][piece.t as usize][piece.color as usize];
+        //        }
+        //    }
+        //}
 
         result
     }
