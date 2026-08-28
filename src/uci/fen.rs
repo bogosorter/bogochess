@@ -56,7 +56,7 @@ fn parse_board(fen: &str) -> Option<Board> {
             if !parse_piece(&mut board, position, c) {
                 return None
             }
-            position.shift(1);
+            position = position.shift(1);
         }
     }
 

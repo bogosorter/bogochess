@@ -1,4 +1,4 @@
-use crate::core::model::{Move, MoveType, Castling};
+use crate::core::model::*;
 
 // Moves are represented as 32-bit integers whose fields are
 // - from (6 bits)
@@ -10,8 +10,8 @@ use crate::core::model::{Move, MoveType, Castling};
 // - previous en-passant (4 bits)
 // - previous castling right (4 bits)
 impl Move {
-    pub fn new(from: usize, to: usize, t: MoveType, piece: usize, captured: Option<usize>, promoted: Option<usize>, previous_en_passant: Option<usize>, previous_castling: Castling) -> Move {
-        let mut bits = from as u32 | (to as u32) << 6 | (t as u32) << 12 | (piece as u32) << 3 | (previous_castling.bits() as u32) << 27;
+    pub fn new(from: Square, to: Square, t: MoveType, piece: PieceType, captured: Option<PieceType>, promoted: Option<PieceType>, previous_en_passant: Option<Square>, previous_castling: Castling) -> Move {
+        let mut bits = from.0 as u32 | (to.0 as u32) << 6 | (t as u32) << 12 | (piece as u32) << 14 | (previous_castling.bits() as u32) << 27;
 
         if let Some(c) = captured {
             bits |= (c as u32) << 17;
@@ -26,7 +26,7 @@ impl Move {
         }
 
         if let Some(ep) = previous_en_passant {
-            bits |= (ep as u32) << 23;
+            bits |= (ep.0 as u32) << 23;
         } else {
             bits |= 0xF << 23;
         }
@@ -34,12 +34,12 @@ impl Move {
         Move(bits)
     }
 
-    pub fn origin(&self) -> usize {
-        (self.0 & 0x3F) as usize
+    pub fn origin(&self) -> Square {
+        Square((self.0 & 0x3F) as usize)
     }
 
-    pub fn destination(&self) -> usize {
-        ((self.0 >> 6) & 0x3F) as usize
+    pub fn destination(&self) -> Square {
+        Square(((self.0 >> 6) & 0x3F) as usize)
     }
 
     pub fn t(&self) -> MoveType {
@@ -47,35 +47,36 @@ impl Move {
         [MoveType::Normal, MoveType::EnPassant, MoveType::Castle, MoveType::TwoSquare][bits]
     }
 
-    pub fn piece(&self) -> usize {
-        ((self.0 >> 14) & 0x07) as usize
+    pub fn piece(&self) -> PieceType {
+        let bits = ((self.0 >> 14) & 0x07) as usize;
+        [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King][bits]
     }
 
-    pub fn captured(&self) -> Option<usize> {
+    pub fn captured(&self) -> Option<PieceType> {
         let bits = ((self.0 >> 17) & 0x7) as usize;
 
         if bits != 0x7 {
-            Some(bits)
+            Some([PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King][bits])
         } else {
             None
         }
     }
 
-    pub fn promoted(&self) -> Option<usize> {
+    pub fn promoted(&self) -> Option<PieceType> {
         let bits = ((self.0 >> 20) & 0x7) as usize;
 
         if bits != 0x7 {
-            Some(bits)
+            Some([PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King][bits])
         } else {
             None
         }
     }
 
-    pub fn en_passant(&self) -> Option<usize> {
+    pub fn en_passant(&self) -> Option<PieceType> {
         let bits = ((self.0 >> 23) & 0xF) as usize;
 
         if bits != 0xF {
-            Some(bits & 0x7)
+            Some([PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King][bits & 0x7])
         } else {
             None
         }

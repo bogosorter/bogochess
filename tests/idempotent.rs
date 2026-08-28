@@ -6,9 +6,9 @@
 use bogochess::core::model::GameState;
 use bogochess::uci::fen;
 
-fn test(position: &str, depth: u32) {
-    let mut position = fen::parse(position).unwrap();
-    idempotent(&mut position, depth);
+fn test(game_state: &str, depth: u32) {
+    let mut game_state = fen::parse(game_state).unwrap();
+    idempotent(&mut game_state, depth);
 }
 
 fn idempotent(game_state: &mut GameState, depth: u32) {
@@ -16,15 +16,15 @@ fn idempotent(game_state: &mut GameState, depth: u32) {
         return;
     }
 
-    for m in position.moves() {
-        let before = position.clone();
-        position.apply(&m);
-        position.undo(&m);
-        assert_eq!(&before, position);
+    for m in game_state.moves() {
+        let before = game_state.clone();
+        game_state.apply(&m);
+        game_state.undo(&m);
+        assert_eq!(&before, game_state);
 
-        position.apply(&m);
-        idempotent(position, depth - 1);
-        position.undo(&m);
+        game_state.apply(&m);
+        idempotent(game_state, depth - 1);
+        game_state.undo(&m);
     }
 }
 

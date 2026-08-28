@@ -15,106 +15,170 @@ impl GameState {
         let mut moves = Vec::with_capacity(220);
         self.pawn_pushes(&mut moves);
         self.knight_movements(&mut moves);
+        self.king_movements(&mut moves);
 
         moves
     }
 
     pub fn pawn_pushes(&mut self, moves: &mut Vec<Move>) {
         let all = self.board.colors[0] & self.board.colors[1];
+        let pawns = self.board.colors[self.current_player] & self.board.pieces[PieceType::Pawn];
 
         match self.current_player {
             Color::White => {
-                let pawns = self.board.colors[Color::White as usize] & self.board.pieces[PAWN];
-
                 // Single pushes
-                let pushable = pawns & !previous_row(all);
-                for position in BitIterator(pushable) {
-                    moves.push(Move::new(position, position + 8, MoveType::Normal, PAWN, None, None, self.en_passant, self.castling));
+                let pushable = pawns & !all.shift_row_back(1);
+                for position in pushable {
+                    moves.push(Move::new(position, position.shift(8), MoveType::Normal, PieceType::Pawn, None, None, self.en_passant, self.castling));
                 }
 
                 // Double pushes
-                let double_pushable = pushable & !previous_row(previous_row(all));
-                for position in BitIterator(double_pushable) {
-                    moves.push(Move::new(position, position + 16, MoveType::TwoSquare, PAWN, None, None, self.en_passant, self.castling));
+                let double_pushable = pushable & !all.shift_row_back(2);
+                for position in double_pushable {
+                    moves.push(Move::new(position, position.shift(16), MoveType::TwoSquare, PieceType::Pawn, None, None, self.en_passant, self.castling));
                 }
             },
             Color::Black => {
-                let pawns = self.board.colors[Color::Black as usize] & self.board.pieces[PAWN];
-
                 // Single pushes
-                let pushable = pawns & !next_row(all);
-                for position in BitIterator(pushable) {
-                    moves.push(Move::new(position, position - 8, MoveType::Normal, PAWN, None, None, self.en_passant, self.castling));
+                let pushable = pawns & !all.shift_row_forward(1);
+                for position in pushable {
+                    moves.push(Move::new(position, position.shift(-8), MoveType::Normal, PieceType::Pawn, None, None, self.en_passant, self.castling));
                 }
 
                 // Double pushes
-                let double_pushable = pushable & !next_row(next_row(all));
-                for position in BitIterator(double_pushable) {
-                    moves.push(Move::new(position, position + 16, MoveType::TwoSquare, PAWN, None, None, self.en_passant, self.castling));
+                let double_pushable = pushable & !all.shift_row_forward(2);
+                for position in double_pushable {
+                    moves.push(Move::new(position, position.shift(-16), MoveType::TwoSquare, PieceType::Pawn, None, None, self.en_passant, self.castling));
                 }
             }
         }
     }
 
     pub fn knight_movements(&mut self, moves: &mut Vec<Move>) {
-        let knights = self.board.colors[self.current_player as usize] & self.board.pieces[KNIGHT];
-        let all = self.board.colors[0] | self.board.colors[1];
+        self.offset_movements(moves, PieceType::Knight, &KNIGHT_TABLE);
+    }
 
-        for origin in BitIterator(knights) {
-            let captures = KNIGHT_TABLE[origin] & self.board.colors[!self.current_player as usize];
-            let non_captures = KNIGHT_TABLE[origin] & !all;
+    pub fn king_movements(&mut self, moves: &mut Vec<Move>) {
+        self.offset_movements(moves, PieceType::King, &KING_TABLE);
+    }
 
-            for destination in BitIterator(captures) {
-                moves.push(Move::new(origin, destination, MoveType::Normal, KNIGHT, Some(self.piece_at(destination)), None, self.en_passant, self.castling));
+    pub fn offset_movements(&mut self, moves: &mut Vec<Move>, t: PieceType, table: &[BitBoard; 64]) {
+        let pieces = self.board.colors[self.current_player] & self.board.pieces[t];
+        let all = self.board.colors[Color::White] | self.board.colors[Color::Black];
+
+        for origin in pieces {
+            let captures = table[origin] & self.board.colors[!self.current_player as usize];
+            let non_captures = table[origin] & !all;
+
+            for destination in captures {
+                moves.push(Move::new(origin, destination, MoveType::Normal, t, self.piece_at(destination), None, self.en_passant, self.castling));
             }
 
-            for destination in BitIterator(non_captures) {
-                moves.push(Move::new(origin, destination, MoveType::Normal, KNIGHT, None, None, self.en_passant, self.castling));
+            for destination in non_captures {
+                moves.push(Move::new(origin, destination, MoveType::Normal, t, None, None, self.en_passant, self.castling));
             }
         }
     }
 
     pub fn apply(&mut self, m: &Move) {
+        let from = m.origin();
+        let to = m.destination();
+        let piece = m.piece();
 
+        // Update the captured piece. This has to be done before the moving
+        // piece is updated - if done after, and if the types of the pieces
+        // coincide, the removal of the piece would result in the removal of the
+        // moving piece and not the captured piece.
+        if let Some(captured) = m.captured() {
+            self.board.colors[!self.current_player] &= !to.bitboard();
+            self.board.pieces[captured] &= !to.bitboard();
+        }
+
+        // Update the piece that is moving
+        self.board.colors[self.current_player] &= !from.bitboard();
+        self.board.pieces[piece] &= !from.bitboard();
+        self.board.colors[self.current_player] |= to.bitboard();
+        self.board.pieces[piece] |= to.bitboard();
+
+        self.current_player = !self.current_player;
     }
 
     pub fn undo(&mut self, m: &Move) {
+        // The implementation is very similar to the implementation of apply,
+        // but in reverse order. It is essentially undoing a stack of changes.
 
+        let from = m.origin();
+        let to = m.destination();
+        let piece = m.piece();
+
+        self.current_player = !self.current_player;
+
+        // Update the piece that moved
+        self.board.colors[self.current_player] &= !to.bitboard();
+        self.board.pieces[piece] &= !to.bitboard();
+        self.board.colors[self.current_player] |= from.bitboard();
+        self.board.pieces[piece] |= from.bitboard();
+
+        // Update the captured piece.
+        if let Some(captured) = m.captured() {
+            self.board.colors[!self.current_player] |= to.bitboard();
+            self.board.pieces[captured] |= to.bitboard();
+        }
     }
 
     pub fn in_check(&mut self) -> bool {
         false
     }
 
-    fn piece_at(&self, position: usize) -> usize {
-        let mask = 1 << position;
-        for i in 0..6 {
-            if (self.board.pieces[i] & mask) != 0 {
-                return i;
-            }
+    fn piece_at(&self, position: Square) -> Option<PieceType> {
+        let mask = position.bitboard();
+
+        if self.board.pieces[PieceType::Pawn] & mask != BitBoard(0) {
+            return Some(PieceType::Pawn);
         }
-        return 1;
+
+        if self.board.pieces[PieceType::Knight] & mask != BitBoard(0) {
+            return Some(PieceType::Knight);
+        }
+
+        if self.board.pieces[PieceType::Bishop] & mask != BitBoard(0) {
+            return Some(PieceType::Bishop);
+        }
+
+        if self.board.pieces[PieceType::Rook] & mask != BitBoard(0) {
+            return Some(PieceType::Rook);
+        }
+
+        if self.board.pieces[PieceType::Queen] & mask != BitBoard(0) {
+            return Some(PieceType::Queen);
+        }
+
+        if self.board.pieces[PieceType::King] & mask != BitBoard(0) {
+            return Some(PieceType::King);
+        }
+
+        return None;
     }
 }
 
-const KNIGHT_TABLE: [u64; 64] = knight_table();
+const KNIGHT_TABLE: [BitBoard; 64] = offsets_table(&[(-2, -1), (-2, 1), (2, -1), (2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2)]);
+const KING_TABLE: [BitBoard; 64] = offsets_table(&[(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]);
 
-const fn knight_table() -> [u64; 64] {
-    let mut table = [0; 64];
+const fn offsets_table(offsets: &[(i32, i32); 8]) -> [BitBoard; 64] {
+    let mut table = [BitBoard(0); 64];
 
     let mut i = 0;
     while i < 64 {
-        table[i] = knight_movements(i);
+        table[i] = offset_movements(&offsets, i);
         i += 1;
     }
 
     table
 }
 
-const fn knight_movements(position: usize) -> u64 {
+const fn offset_movements(offsets: &[(i32, i32); 8], position: usize) -> BitBoard {
     let row = (position / 8) as i32;
     let column = (position % 8) as i32;
-    let offsets = [(-2, -1), (-2, 1), (2, -1), (2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2)];
 
     let mut result = 0;
 
@@ -136,49 +200,5 @@ const fn knight_movements(position: usize) -> u64 {
         result |= 1 << index;
     }
 
-    result
-}
-
-struct BitIterator(u64);
-impl Iterator for BitIterator {
-    type Item = usize;
-    fn next(&mut self) -> Option<usize> {
-        if self.0 == 0 {
-            return None;
-        }
-
-        let position = self.0.trailing_zeros() as usize;
-        self.0 &= self.0 - 1;
-        Some(position)
-    }
-}
-
-#[inline]
-pub fn previous_row(bitboard: u64) -> u64 {
-    bitboard >> 8
-}
-
-#[inline]
-pub fn next_row(bitboard: u64) -> u64 {
-    bitboard << 8
-}
-
-#[inline]
-pub fn previous_column(bitboard: u64) -> u64 {
-    bitboard >> 1
-}
-
-#[inline]
-pub fn next_column(bitboard: u64) -> u64 {
-    bitboard << 1
-}
-
-#[inline]
-pub fn row(n: usize) -> u64 {
-    0xFF << n * 8
-}
-
-#[inline]
-pub fn column(n: usize) -> u64 {
-    0x0101010101010101 << n
+    BitBoard(result)
 }

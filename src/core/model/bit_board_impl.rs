@@ -1,6 +1,41 @@
-use crate::core::model::BitBoard;
+use crate::core::model::{BitBoard, Square};
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
+
+impl BitBoard {
+    #[inline]
+    pub fn shift_row_forward(&self, amount: usize) -> BitBoard {
+        BitBoard(self.0 << (amount * 8))
+    }
+
+    #[inline]
+    pub fn shift_row_back(&self, amount: usize) -> BitBoard {
+        BitBoard(self.0 >> (amount * 8))
+    }
+
+    #[inline]
+    pub fn shift_column_forward(&self, amount: i8) -> BitBoard {
+        BitBoard(self.0 << amount)
+    }
+
+    #[inline]
+    pub fn shift_column_backward(&self, amount: i8) -> BitBoard {
+        BitBoard(self.0 >> amount)
+    }
+}
+
+impl Iterator for BitBoard {
+    type Item = Square;
+    fn next(&mut self) -> Option<Square> {
+        if self.0 == 0 {
+            return None;
+        }
+
+        let position = Square(self.0.trailing_zeros() as usize);
+        self.0 &= self.0 - 1;
+        Some(position)
+    }
+}
 
 impl BitAnd for BitBoard {
     type Output = BitBoard;

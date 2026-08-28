@@ -13,7 +13,7 @@ pub struct EngineState {
     pub tt: TranspositionTable
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct GameState {
     pub board: Board,
     pub current_player: Color,
@@ -23,22 +23,23 @@ pub struct GameState {
     pub ended: bool
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Board {
     pub pieces: [BitBoard; 6],
     pub colors: [BitBoard; 2]
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-struct BitBoard(u64);
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct BitBoard(pub u64);
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Move(u32);
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub struct Square(usize);
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct Square(pub usize);
 
 #[repr(usize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum PieceType {
     Pawn,
     Knight,
