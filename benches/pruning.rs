@@ -1,14 +1,14 @@
 // Benchmarks the alpha-beta pruning algorithm on various positions and depths.
 // Source: https://chessprogramming.org/Perft_Results
 
-use bogochess::core::model::{State, Position};
+use bogochess::core::model::{EngineState, GameState};
 use bogochess::core::search::{self, SearchStatistics, AlphaBetaOptions};
 use bogochess::uci::fen;
 
 use std::time::{Instant, Duration};
 
 
-fn benchmark(name: &str, position: &str, depth: u32, state: &mut State) {
+fn benchmark(name: &str, position: &str, depth: u32, state: &mut EngineState) {
     let mut position = fen::parse(position).unwrap();
 
     let mut statistics = SearchStatistics::new();
@@ -22,7 +22,7 @@ fn benchmark(name: &str, position: &str, depth: u32, state: &mut State) {
 // Instead of the normal iterative deepening, whose depth is unlimited, we use a
 // limited version to compare different versions.
 
-fn iterative_deepening(position: &mut Position, depth: u32, state: &mut State, statistics: &mut SearchStatistics) -> f32 {
+fn iterative_deepening(game_state: &mut GameState, depth: u32, state: &mut EngineState, statistics: &mut SearchStatistics) -> f32 {
     let mut history = [[[0; 64]; 64]; 2];
 
     // 100 years from now (infinite deadline)
@@ -58,7 +58,7 @@ const POSITION_5: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 
 const POSITION_6: &str = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
 
 fn main() {
-    let mut state = State::new();
+    let mut state = EngineState::new();
     benchmark("initial_1", INITIAL_FEN, 1, &mut state);
     benchmark("initial_2", INITIAL_FEN, 2, &mut state);
     benchmark("initial_3", INITIAL_FEN, 3, &mut state);

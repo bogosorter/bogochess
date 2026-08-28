@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 pub const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-pub fn parse(fen: &str) -> Option<Position> {
+pub fn parse(fen: &str) -> Option<GameState> {
     let words: Vec<&str> = fen.split_whitespace().collect();
     if words.len() != 6 {
         return None
@@ -22,7 +22,7 @@ pub fn parse(fen: &str) -> Option<Position> {
     };
     let halfmoves = words[4].parse::<u8>().ok()?;
 
-    Some(Position {
+    Some(GameState {
         board,
         ended: false,
         current_player: active_color,
@@ -32,51 +32,51 @@ pub fn parse(fen: &str) -> Option<Position> {
     })
 }
 
-pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<Position> {
-    let mut position = parse(fen)?;
+pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<GameState> {
+    let mut game_state = parse(fen)?;
 
     for s in moves {
-        let m = position.moves().into_iter().find(|m| m.to_string() == *s)?;
-        position.apply(&m);
+        let m = game_state.moves().into_iter().find(|m| m.to_string() == *s)?;
+        game_state.apply(&m);
     }
 
-    Some(position)
+    Some(game_state)
 }
 
 fn parse_board(fen: &str) -> Option<Board> {
-    let mut position = 54;
+    let mut position = Square::new(56);
     let mut board = Board::new();
 
     for c in fen.chars() {
         if c.is_numeric() {
-            position += c.to_digit(10).unwrap() as usize;
+            position = position.shift(c.to_digit(10).unwrap() as i8);
         } else if c == '/' {
-            position -= 8;
+            position = position.shift(-16);
         } else {
             if !parse_piece(&mut board, position, c) {
                 return None
             }
-            position += 1;
+            position.shift(1);
         }
     }
 
     Some(board)
 }
 
-fn parse_piece(board: &mut Board, position: usize, fen: char) -> bool {
+fn parse_piece(board: &mut Board, square: Square, fen: char) -> bool {
     if fen.is_uppercase() {
-        board.colors[0] |= 1 << position;
+        board.colors[0] |= square.bitboard();
     } else {
-        board.colors[1] |= 1 << position;
+        board.colors[1] |= square.bitboard();
     }
 
     match fen.to_ascii_uppercase() {
-        'P' => board.pieces[0] |= 1 << position,
-        'N' => board.pieces[1] |= 1 << position,
-        'B' => board.pieces[2] |= 1 << position,
-        'R' => board.pieces[3] |= 1 << position,
-        'Q' => board.pieces[4] |= 1 << position,
-        'K' => board.pieces[5] |= 1 << position,
+        'P' => board.pieces[PieceType::Pawn] |= square.bitboard(),
+        'N' => board.pieces[PieceType::Knight] |= square.bitboard(),
+        'B' => board.pieces[PieceType::Bishop] |= square.bitboard(),
+        'R' => board.pieces[PieceType::Rook] |= square.bitboard(),
+        'Q' => board.pieces[PieceType::Queen] |= square.bitboard(),
+        'K' => board.pieces[PieceType::King] |= square.bitboard(),
         _ => return false
     }
 
@@ -93,7 +93,7 @@ fn parse_castling_piece(fen: char) -> Option<Castling> {
     }
 }
 
-fn parse_square(fen: &str) -> Option<usize> {
+fn parse_square(fen: &str) -> Option<Square> {
     if fen.len() != 2 {
         return None
     }
@@ -120,25 +120,11 @@ fn parse_square(fen: &str) -> Option<usize> {
         return None;
     };
 
-    return Some((row * 8 + column) as usize)
+    return Some(Square::new((row * 8 + column) as usize))
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "move")
-    }
-}
-
-impl Display for PieceType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let character = match self {
-            PieceType::Pawn => 'p',
-            PieceType::Knight => 'n',
-            PieceType::Bishop => 'b',
-            PieceType::Rook => 'r',
-            PieceType::Queen => 'q',
-            PieceType::King => 'k',
-        };
-        write!(f, "{}", character)
     }
 }

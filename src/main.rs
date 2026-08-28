@@ -1,9 +1,9 @@
-use bogochess::core::model::State;
+use bogochess::core::model::EngineState;
 use bogochess::uci::commands::{self, GUICommand};
 use std::io;
 
 fn main() {
-    let mut state = State::new();
+    let mut state = EngineState::new();
 
     loop {
         let mut command = String::new();

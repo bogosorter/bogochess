@@ -1,4 +1,4 @@
-use crate::core::model::{State, Position, Move};
+use crate::core::model::{EngineState, GameState, Move};
 use crate::core::search::{SearchOptions, SearchStatistics};
 use crate::uci::fen::{self, INITIAL_FEN};
 use crate::utils::perft;
@@ -8,7 +8,7 @@ use std::fmt::Display;
 pub enum GUICommand {
     UCI,
     IsReady,
-    Position(Position),
+    Position(GameState),
     Perft(u32),
     Go(SearchOptions),
     Quit
@@ -33,24 +33,24 @@ pub fn parse(command: &str) -> Option<GUICommand> {
     }
 }
 
-pub fn process<'a>(command: GUICommand, state: &mut State) -> Option<EngineCommand<'a>> {
+pub fn process<'a>(command: GUICommand, state: &mut EngineState) -> Option<EngineCommand<'a>> {
     match command {
         GUICommand::UCI => Some(EngineCommand::UCIOK),
         GUICommand::IsReady => Some(EngineCommand::ReadyOK),
 
         GUICommand::Position(p) => {
-            state.position = Some(p);
+            state.game_state = Some(p);
             None
         },
 
         GUICommand::Perft(depth) =>
-            if let Some(p) = state.position.as_mut() {
+            if let Some(p) = state.game_state.as_mut() {
                 perft::perft(p, depth);
                 None
             } else { None },
 
         GUICommand::Go(options) =>
-            if let Some(p) = state.position.as_mut() && let Some(m) = p.search(&mut state.tt, &options) {
+            if let Some(p) = state.game_state.as_mut() && let Some(m) = p.search(&mut state.tt, &options) {
                 Some(EngineCommand::BestMove(m))
             } else { None },
 

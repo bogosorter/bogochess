@@ -1,4 +1,4 @@
-use crate::core::model::{Position, Move};
+use crate::core::model::{GameState, Move};
 
 use rand::{RngExt, SeedableRng};
 use rand::rngs::StdRng;
@@ -71,13 +71,13 @@ impl TranspositionTable {
         }
     }
 
-    pub fn hash(&self, position: &Position) -> u64 {
+    pub fn hash(&self, game_state: &GameState) -> u64 {
         let mut result
-            = self.zobrist.current_player[position.current_player as usize]
-            ^ self.zobrist.castling[position.castling.bits() as usize];
+            = self.zobrist.current_player[game_state.current_player as usize]
+            ^ self.zobrist.castling[game_state.castling.bits() as usize];
 
-        if let Some(square) = position.en_passant {
-            result ^= self.zobrist.en_passant[square]
+        if let Some(square) = game_state.en_passant {
+            result ^= self.zobrist.en_passant[square.col()]
         }
 
         //for row in 0..8 {
@@ -104,7 +104,6 @@ pub struct ZobristValues {
     pub en_passant: [u64; 8]
 }
 
-#[derive(Debug)]
 pub struct TranspositionEntry {
     pub hash: u64,
     pub depth: u32,

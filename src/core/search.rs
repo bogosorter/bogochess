@@ -1,4 +1,4 @@
-use crate::core::model::{Move, Position};
+use crate::core::model::{Move, GameState};
 use crate::core::search::transposition::{TranspositionTable, TranspositionType};
 
 use std::cmp::Ordering;
@@ -27,7 +27,7 @@ pub struct SearchStatistics {
 }
 
 
-impl Position {
+impl GameState {
     pub fn search(&mut self, tt: &mut TranspositionTable, options: &SearchOptions) -> Option<Move> {
         let (_, m) = iterative_deepening(self, tt, options, &mut SearchStatistics::new());
         m
@@ -35,9 +35,9 @@ impl Position {
 }
 
 
-fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
+fn iterative_deepening(game_state: &mut GameState, tt: &mut TranspositionTable, options: &SearchOptions, statistics: &mut SearchStatistics) -> (f32, Option<Move>) {
     let start = Instant::now();
-    let search_time = options.search_time(position.current_player);
+    let search_time = options.search_time(game_state.current_player);
     let deadline = start + Duration::from_millis(search_time as u64);
 
     let mut i = 1;
@@ -47,7 +47,7 @@ fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, opt
 
     while Instant::now() < deadline {
         let mut options = AlphaBetaOptions {
-            position,
+            game_state,
             max_depth: i,
             deadline,
             statistics: statistics,
@@ -79,7 +79,7 @@ fn iterative_deepening(position: &mut Position, tt: &mut TranspositionTable, opt
 
 
 pub struct AlphaBetaOptions<'a> {
-    pub position: &'a mut Position,
+    pub game_state: &'a mut GameState,
     pub max_depth: u32,
     pub deadline: Instant,
     pub statistics: &'a mut SearchStatistics,
@@ -104,10 +104,10 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
     let mut best_move = None;
     let mut best_score = f32::MIN;
     let original_alpha = alpha;
-    let hash = options.tt.hash(options.position);
+    let hash = options.tt.hash(options.game_state);
 
     // Check the transposition table
-    if !options.position.ended && let Some(entry) = options.tt.get(hash, depth) {
+    if !options.game_state.ended && let Some(entry) = options.tt.get(hash, depth) {
         match entry.t {
             TranspositionType::Exact => {
                 return Some((entry.best_move.clone(), entry.value));
@@ -126,12 +126,12 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
     }
 
 
-    let mut moves = options.position.moves();
+    let mut moves = options.game_state.moves();
     if moves.is_empty() {
         // Checkmates will result in an evaluation with absolute value 1. If
         // there are no moves for reasons other than checkmates, this must be a
         // stalemate.
-        let evaluation = options.position.value();
+        let evaluation = options.game_state.value();
         if evaluation.abs() == 1.0 {
             return Some((None, evaluation));
         } else {
@@ -139,14 +139,14 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
         }
     }
 
-    moves.sort_by(|a, b| compare_moves(&options.history[options.position.current_player as usize], a, b));
+    moves.sort_by(|a, b| compare_moves(&options.history[options.game_state.current_player as usize], a, b));
 
     for m in moves {
-        options.position.apply(&m);
+        options.game_state.apply(&m);
         // We invert alpha and beta since the next player expects scores
         // according to his perspective
         let (_, score) = alphabeta(options, depth - 1, -beta, -alpha)?;
-        options.position.undo(&m);
+        options.game_state.undo(&m);
 
         // Scores are returned from the next player's perspective, so we have to
         // invert them
@@ -161,7 +161,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
             if score >= beta {
                 // Update the history table according to the history heuristics
                 let update = (options.max_depth - depth + 1) * (options.max_depth - depth + 1);
-                options.history[options.position.current_player as usize][m.from()][m.to()] += update;
+                options.history[options.game_state.current_player as usize][m.origin()][m.destination()] += update;
 
                 options.tt.insert(hash, depth, score, best_move, TranspositionType::LowerBound);
                 return Some((best_move, score));
@@ -184,10 +184,10 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
     let mut best_score = f32::MIN;
     let original_alpha = alpha;
 
-    let hash = options.tt.hash(options.position);
+    let hash = options.tt.hash(options.game_state);
 
-    if !options.position.ended {
-        best_score = options.position.value(); // stand-pat score
+    if !options.game_state.ended {
+        best_score = options.game_state.value(); // stand-pat score
         alpha = alpha.max(best_score);
 
         // Check the transposition table
@@ -210,12 +210,12 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
         }
     }
 
-    let mut moves = options.position.moves();
+    let mut moves = options.game_state.moves();
     if moves.is_empty() {
         // Checkmates will result in an evaluation with absolute value 1. If
         // there are no moves for reasons other than checkmates, this must be a
         // stalemate.
-        let evaluation = options.position.value();
+        let evaluation = options.game_state.value();
         if evaluation.abs() == 1.0 {
             return (None, evaluation);
         } else {
@@ -227,17 +227,17 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
 
     // If there are no moves with captures, the quiescent search should be ended
     if moves.is_empty() {
-        return (None, options.position.value());
+        return (None, options.game_state.value());
     }
 
-    moves.sort_by(|a, b| compare_moves(&options.history[options.position.current_player as usize], a, b));
+    moves.sort_by(|a, b| compare_moves(&options.history[options.game_state.current_player as usize], a, b));
 
     for m in moves {
-        options.position.apply(&m);
+        options.game_state.apply(&m);
         // We invert alpha and beta since the next player expects scores
         // according to his perspective
         let (_, score) = quiescent(options, depth + 1, -beta, -alpha);
-        options.position.undo(&m);
+        options.game_state.undo(&m);
 
         // Scores are returned from the next player's perspective, so we have to
         // invert them
@@ -251,7 +251,7 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
             // minimizing player can do
             if score >= beta {
                 // Update the history table according to the history heuristics
-                options.history[options.position.current_player as usize][m.from()][m.to()] += 1;
+                options.history[options.game_state.current_player as usize][m.origin()][m.destination()] += 1;
 
                 options.tt.insert(hash, 0, score, best_move, TranspositionType::LowerBound);
 
@@ -273,8 +273,8 @@ fn compare_moves(history: &[[u32; 64]; 64], a: &Move, b: &Move) -> Ordering {
         return ordering;
     }
 
-    let a_history = history[a.from()][a.to()];
-    let b_history = history[b.from()][b.to()];
+    let a_history = history[a.origin()][a.destination()];
+    let b_history = history[b.origin()][b.destination()];
 
     return b_history.cmp(&a_history);
 }

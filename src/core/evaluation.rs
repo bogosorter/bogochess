@@ -1,7 +1,7 @@
-use crate::core::model::{Position, Move, PieceType, Color};
+use crate::core::model::{GameState, Move, Color};
 use std::cmp::Ordering;
 
-impl Position {
+impl GameState {
     pub fn value(&self) -> f32 {
         // All scores are calculated from white's perspective, and inverted if needed
 
@@ -108,20 +108,6 @@ impl PartialOrd for Move {
         None
     }
 }
-
-impl PieceType {
-    pub fn value(&self) -> f32 {
-        match self {
-            PieceType::Pawn => 1.0,
-            PieceType::Knight => 3.0,
-            PieceType::Bishop => 3.0,
-            PieceType::Rook => 5.0,
-            PieceType::Queen => 9.0,
-            PieceType::King => 0.0
-        }
-    }
-}
-
 
 const BONUS_TABLES: [[[[f32; 8]; 8]; 2]; 6]  = [
     [

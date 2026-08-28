@@ -3,7 +3,7 @@
 // Sources: https://chessprogramming.org/Perft_Results
 
 
-use bogochess::core::model::Position;
+use bogochess::core::model::GameState;
 use bogochess::uci::fen;
 
 fn test(position: &str, depth: u32) {
@@ -11,8 +11,8 @@ fn test(position: &str, depth: u32) {
     idempotent(&mut position, depth);
 }
 
-fn idempotent(position: &mut Position, depth: u32) {
-    if depth == 0 || position.ended == false {
+fn idempotent(game_state: &mut GameState, depth: u32) {
+    if depth == 0 || game_state.ended == false {
         return;
     }
 
