@@ -31,7 +31,7 @@ impl TranspositionTable {
         }
     }
 
-    pub fn get(&self, hash: u64, depth: i32) -> Option<&TranspositionEntry> {
+    pub fn get(&self, hash: u64, depth: u32) -> Option<&TranspositionEntry> {
         if let Some(entry) = self.depth_table[(hash & self.mask) as usize].as_ref() && entry.hash == hash && entry.depth >= depth {
            return Some(entry);
         }
@@ -41,7 +41,7 @@ impl TranspositionTable {
         None
     }
 
-    pub fn insert(&mut self, hash: u64, depth: i32, value: f32, best_move: &Option<Move>, t: TranspositionType) {
+    pub fn insert(&mut self, hash: u64, depth: u32, value: f32, best_move: &Option<Move>, t: TranspositionType) {
         let position = (hash & self.mask) as usize;
 
         if let Some(entry) = self.depth_table[position].as_ref() && entry.depth > depth {
@@ -51,7 +51,7 @@ impl TranspositionTable {
 
             self.fresh_table[position] = Some(TranspositionEntry {
                 hash,
-                depth: depth,
+                depth,
                 value,
                 best_move: best_move.clone(),
                 t
@@ -63,7 +63,7 @@ impl TranspositionTable {
 
             self.depth_table[position] = Some(TranspositionEntry {
                 hash,
-                depth: depth,
+                depth,
                 value,
                 best_move: best_move.clone(),
                 t
@@ -107,7 +107,7 @@ pub struct ZobristValues {
 #[derive(Debug)]
 pub struct TranspositionEntry {
     pub hash: u64,
-    pub depth: i32,
+    pub depth: u32,
     pub value: f32,
     pub best_move: Option<Move>,
     pub t: TranspositionType

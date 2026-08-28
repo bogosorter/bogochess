@@ -12,22 +12,23 @@ fn benchmark(name: &str, position: &str, depth: u32, state: &mut State) {
     let mut position = fen::parse(position).unwrap();
 
     let mut statistics = SearchStatistics::new();
-    iterative_deepening(&mut position, depth, state, &mut statistics);
+    let score = iterative_deepening(&mut position, depth, state, &mut statistics);
 
     let nps = statistics.nodes * 1000000 / (statistics.search_time as i64 + 1);
-    println!("{}, {} nodes analyzed, {} nps, {}% tt", name, statistics.nodes, nps, (statistics.transposition_load * 100.0).round());
+    println!("{}, {} nodes analyzed, {} nps, {}% tt, score: {}", name, statistics.nodes, nps, (statistics.transposition_load * 100.0).round(), score);
 }
 
 
 // Instead of the normal iterative deepening, whose depth is unlimited, we use a
 // limited version to compare different versions.
 
-fn iterative_deepening(position: &mut Position, depth: u32, state: &mut State, statistics: &mut SearchStatistics) {
+fn iterative_deepening(position: &mut Position, depth: u32, state: &mut State, statistics: &mut SearchStatistics) -> f32 {
     let mut history = [[[0; 64]; 64]; 2];
 
     // 100 years from now (infinite deadline)
     let start = Instant::now();
     let deadline = start + Duration::from_secs(365 * 86400 * 100);
+    let mut score = 0.0;
 
     for i in 1..=depth {
         let mut options = AlphaBetaOptions {
@@ -39,11 +40,12 @@ fn iterative_deepening(position: &mut Position, depth: u32, state: &mut State, s
             tt: &mut state.tt
         };
 
-        search::alphabeta(&mut options, i as i32, f32::MIN, f32::MAX);
+        (_, score) = search::alphabeta(&mut options, i, f32::MIN, f32::MAX).unwrap();
     };
 
     statistics.search_time = start.elapsed().as_micros() as u64;
     statistics.transposition_load = state.tt.load();
+    score
 }
 
 

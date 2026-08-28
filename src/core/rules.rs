@@ -8,6 +8,10 @@ impl Position {
     // will be a king capture anyway, which will give the current move a bad
     // evaluation, we can discard the check.
     pub fn moves(&mut self) -> Vec<Move> {
+        if self.ended {
+            return Vec::new();
+        }
+
         let mut moves = Vec::with_capacity(220);
 
         for row in 0..8 {
