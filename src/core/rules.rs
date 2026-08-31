@@ -25,11 +25,13 @@ impl GameState {
     }
 
     pub fn in_check(&mut self) -> bool {
+        let king = self.board.pieces[PieceType::King] & self.board.colors[self.current_player];
+
         self.current_player = !self.current_player;
-        let moves = self.moves();
+        let result = self.under_attack(king);
         self.current_player = !self.current_player;
 
-        moves.iter().any(|m| m.captured().is_some_and(|p| p == PieceType::King))
+        result
     }
 
     pub fn apply(&mut self, m: &Move) {
@@ -78,7 +80,7 @@ impl GameState {
         }
     }
 
-    fn pawn_pushes(&mut self, moves: &mut Vec<Move>) {
+    fn pawn_pushes(&self, moves: &mut Vec<Move>) {
         let all = self.board.colors[0] | self.board.colors[1];
         let pawns = self.board.colors[self.current_player] & self.board.pieces[PieceType::Pawn];
 
@@ -112,7 +114,7 @@ impl GameState {
         }
     }
 
-    fn pawn_captures(&mut self, moves: &mut Vec<Move>) {
+    fn pawn_captures(&self, moves: &mut Vec<Move>) {
         let pawns = self.board.colors[self.current_player] & self.board.pieces[PieceType::Pawn];
         let theirs = self.board.colors[!self.current_player];
 
@@ -150,27 +152,27 @@ impl GameState {
         }
     }
 
-    fn knight_movements(&mut self, moves: &mut Vec<Move>) {
+    fn knight_movements(&self, moves: &mut Vec<Move>) {
         self.offset_movements(moves, PieceType::Knight, &KNIGHT_TABLE);
     }
 
-    fn bishop_movements(&mut self, moves: &mut Vec<Move>) {
+    fn bishop_movements(&self, moves: &mut Vec<Move>) {
         self.sliding_movements(moves, PieceType::Bishop, &[(-1, -1), (-1, 1), (1, -1), (1, 1)]);
     }
 
-    fn rook_movements(&mut self, moves: &mut Vec<Move>) {
+    fn rook_movements(&self, moves: &mut Vec<Move>) {
         self.sliding_movements(moves, PieceType::Rook, &[(-1, 0), (1, 0), (0, -1), (0, 1)]);
     }
 
-    fn queen_movements(&mut self, moves: &mut Vec<Move>) {
+    fn queen_movements(&self, moves: &mut Vec<Move>) {
         self.sliding_movements(moves, PieceType::Queen, &[(-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)]);
     }
 
-    fn king_movements(&mut self, moves: &mut Vec<Move>) {
+    fn king_movements(&self, moves: &mut Vec<Move>) {
         self.offset_movements(moves, PieceType::King, &KING_TABLE);
     }
 
-    fn offset_movements(&mut self, moves: &mut Vec<Move>, t: PieceType, table: &[BitBoard; 64]) {
+    fn offset_movements(&self, moves: &mut Vec<Move>, t: PieceType, table: &[BitBoard; 64]) {
         let pieces = self.board.colors[self.current_player] & self.board.pieces[t];
         let all = self.board.colors[Color::White] | self.board.colors[Color::Black];
 
@@ -188,7 +190,7 @@ impl GameState {
         }
     }
 
-    fn sliding_movements(&mut self, moves: &mut Vec<Move>, t: PieceType, offsets: &[(i32, i32)]) {
+    fn sliding_movements(&self, moves: &mut Vec<Move>, t: PieceType, offsets: &[(i32, i32)]) {
         let pieces = self.board.colors[self.current_player] & self.board.pieces[t];
         let ours = self.board.colors[self.current_player];
         let theirs = self.board.colors[!self.current_player];
@@ -218,6 +220,119 @@ impl GameState {
                 }
             }
         }
+    }
+
+    fn under_attack(&self, target: BitBoard) -> bool {
+        if
+            self.pawn_attack(target)
+            || self.knight_attack(target)
+            || self.bishop_attack(target)
+            || self.rook_attack(target)
+            || self.queen_attack(target)
+            || self.king_attack(target)
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn knight_attack(&self, target: BitBoard) -> bool {
+        self.offset_attack(PieceType::Knight, &KNIGHT_TABLE, target)
+    }
+
+    fn bishop_attack(&self, target: BitBoard) -> bool {
+        self.sliding_attack(PieceType::Bishop, &[(-1, -1), (-1, 1), (1, -1), (1, 1)], target)
+    }
+
+    fn rook_attack(&self, target: BitBoard) -> bool {
+        self.sliding_attack(PieceType::Rook, &[(-1, 0), (1, 0), (0, -1), (0, 1)], target)
+    }
+
+    fn queen_attack(&self, target: BitBoard) -> bool {
+        self.sliding_attack(PieceType::Queen, &[(-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)], target)
+    }
+
+    fn king_attack(&self, target: BitBoard) -> bool {
+        self.offset_attack(PieceType::King, &KING_TABLE, target)
+    }
+
+    fn pawn_attack(&self, target: BitBoard) -> bool {
+        let pawns = self.board.colors[self.current_player] & self.board.pieces[PieceType::Pawn];
+
+        match self.current_player {
+            Color::White => {
+                // Captures to the left
+                let captures = pawns & (target.shift_row_backward(1).shift_column_forward(1) & !BitBoard::col(0));
+                if !captures.empty() {
+                    return true;
+                }
+
+                // Captures to the right
+                let captures = pawns & (target.shift_row_backward(1).shift_column_backward(1) & !BitBoard::col(7));
+                if !captures.empty() {
+                    return true;
+                }
+            },
+            Color::Black => {
+                // Captures to the left
+                let captures = pawns & (target.shift_row_forward(1).shift_column_forward(1) & !BitBoard::col(0));
+                if !captures.empty() {
+                    return true;
+                }
+
+                // Captures to the right
+                let captures = pawns & (target.shift_row_forward(1).shift_column_backward(1) & !BitBoard::col(7));
+                if !captures.empty() {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    fn offset_attack(&self, t: PieceType, table: &[BitBoard; 64], target: BitBoard) -> bool {
+        let pieces = self.board.colors[self.current_player] & self.board.pieces[t];
+
+        for origin in pieces {
+            let captures = table[origin] & target;
+            if !captures.empty() {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn sliding_attack(&self, t: PieceType, offsets: &[(i32, i32)], target: BitBoard) -> bool {
+        let pieces = self.board.colors[self.current_player] & self.board.pieces[t];
+        let all = self.board.colors[0] | self.board.colors[1];
+
+        for origin in pieces {
+            for offset in offsets {
+                let mut current_row;
+                let mut current_column;
+                let (row_offset, column_offset) = offset;
+                (current_row, current_column) = (origin.row() as i32 + row_offset, origin.column() as i32 + column_offset);
+
+                while Square::valid(current_row, current_column) {
+                    let destination = Square::from(current_row as usize, current_column as usize);
+
+                    if !(destination.bitboard() & target).empty() {
+                        return true;
+                    }
+
+                    if !(destination.bitboard() & all).empty() {
+                        break;
+                    }
+
+                    (current_row, current_column) = (current_row + row_offset, current_column + column_offset);
+                }
+            }
+        }
+
+        false
     }
 
     fn piece_at(&self, position: Square) -> Option<PieceType> {
