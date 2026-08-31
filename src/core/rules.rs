@@ -24,6 +24,60 @@ impl GameState {
         moves
     }
 
+    pub fn in_check(&mut self) -> bool {
+        self.current_player = !self.current_player;
+        let moves = self.moves();
+        self.current_player = !self.current_player;
+
+        moves.iter().any(|m| m.captured().is_some_and(|p| p == PieceType::King))
+    }
+
+    pub fn apply(&mut self, m: &Move) {
+        let from = m.origin();
+        let to = m.destination();
+        let piece = m.piece();
+
+        // Update the captured piece. This has to be done before the moving
+        // piece is updated - if done after, and if the types of the pieces
+        // coincide, the removal of the piece would result in the removal of the
+        // moving piece and not the captured piece.
+        if let Some(captured) = m.captured() {
+            self.board.colors[!self.current_player] &= !to.bitboard();
+            self.board.pieces[captured] &= !to.bitboard();
+        }
+
+        // Update the piece that is moving
+        self.board.colors[self.current_player] &= !from.bitboard();
+        self.board.pieces[piece] &= !from.bitboard();
+        self.board.colors[self.current_player] |= to.bitboard();
+        self.board.pieces[piece] |= to.bitboard();
+
+        self.current_player = !self.current_player;
+    }
+
+    pub fn undo(&mut self, m: &Move) {
+        // The implementation is very similar to the implementation of apply,
+        // but in reverse order. It is essentially undoing a stack of changes.
+
+        let from = m.origin();
+        let to = m.destination();
+        let piece = m.piece();
+
+        self.current_player = !self.current_player;
+
+        // Update the piece that moved
+        self.board.colors[self.current_player] &= !to.bitboard();
+        self.board.pieces[piece] &= !to.bitboard();
+        self.board.colors[self.current_player] |= from.bitboard();
+        self.board.pieces[piece] |= from.bitboard();
+
+        // Update the captured piece.
+        if let Some(captured) = m.captured() {
+            self.board.colors[!self.current_player] |= to.bitboard();
+            self.board.pieces[captured] |= to.bitboard();
+        }
+    }
+
     fn pawn_pushes(&mut self, moves: &mut Vec<Move>) {
         let all = self.board.colors[0] | self.board.colors[1];
         let pawns = self.board.colors[self.current_player] & self.board.pieces[PieceType::Pawn];
@@ -164,56 +218,6 @@ impl GameState {
                 }
             }
         }
-    }
-
-    pub fn apply(&mut self, m: &Move) {
-        let from = m.origin();
-        let to = m.destination();
-        let piece = m.piece();
-
-        // Update the captured piece. This has to be done before the moving
-        // piece is updated - if done after, and if the types of the pieces
-        // coincide, the removal of the piece would result in the removal of the
-        // moving piece and not the captured piece.
-        if let Some(captured) = m.captured() {
-            self.board.colors[!self.current_player] &= !to.bitboard();
-            self.board.pieces[captured] &= !to.bitboard();
-        }
-
-        // Update the piece that is moving
-        self.board.colors[self.current_player] &= !from.bitboard();
-        self.board.pieces[piece] &= !from.bitboard();
-        self.board.colors[self.current_player] |= to.bitboard();
-        self.board.pieces[piece] |= to.bitboard();
-
-        self.current_player = !self.current_player;
-    }
-
-    pub fn undo(&mut self, m: &Move) {
-        // The implementation is very similar to the implementation of apply,
-        // but in reverse order. It is essentially undoing a stack of changes.
-
-        let from = m.origin();
-        let to = m.destination();
-        let piece = m.piece();
-
-        self.current_player = !self.current_player;
-
-        // Update the piece that moved
-        self.board.colors[self.current_player] &= !to.bitboard();
-        self.board.pieces[piece] &= !to.bitboard();
-        self.board.colors[self.current_player] |= from.bitboard();
-        self.board.pieces[piece] |= from.bitboard();
-
-        // Update the captured piece.
-        if let Some(captured) = m.captured() {
-            self.board.colors[!self.current_player] |= to.bitboard();
-            self.board.pieces[captured] |= to.bitboard();
-        }
-    }
-
-    pub fn in_check(&mut self) -> bool {
-        false
     }
 
     fn piece_at(&self, position: Square) -> Option<PieceType> {
