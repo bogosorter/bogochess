@@ -14,6 +14,7 @@ impl GameState {
 
         let mut moves = Vec::with_capacity(220);
         self.pawn_pushes(&mut moves);
+        self.pawn_captures(&mut moves);
         self.knight_movements(&mut moves);
         self.bishop_movements(&mut moves);
         self.rook_movements(&mut moves);
@@ -52,6 +53,44 @@ impl GameState {
                 let double_pushable = pushable & BitBoard::row(6) & !all.shift_row_forward(2);
                 for position in double_pushable {
                     moves.push(Move::new(position, position.shift(-16), MoveType::TwoSquare, PieceType::Pawn, None, None, self.en_passant, self.castling));
+                }
+            }
+        }
+    }
+
+    fn pawn_captures(&mut self, moves: &mut Vec<Move>) {
+        let pawns = self.board.colors[self.current_player] & self.board.pieces[PieceType::Pawn];
+        let theirs = self.board.colors[!self.current_player];
+
+        match self.current_player {
+            Color::White => {
+                // Captures to the left
+                let captures = pawns & (theirs.shift_row_backward(1).shift_column_forward(1) & !BitBoard::col(0));
+                for position in captures {
+                    let destination = position.shift(7);
+                    moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
+                }
+
+                // Captures to the right
+                let captures = pawns & (theirs.shift_row_backward(1).shift_column_backward(1) & !BitBoard::col(7));
+                for position in captures {
+                    let destination = position.shift(9);
+                    moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
+                }
+            },
+            Color::Black => {
+                // Captures to the left
+                let captures = pawns & (theirs.shift_row_forward(1).shift_column_forward(1) & !BitBoard::col(0));
+                for position in captures {
+                    let destination = position.shift(-9);
+                    moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
+                }
+
+                // Captures to the right
+                let captures = pawns & (theirs.shift_row_forward(1).shift_column_backward(1) & !BitBoard::col(7));
+                for position in captures {
+                    let destination = position.shift(-7);
+                    moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
                 }
             }
         }
