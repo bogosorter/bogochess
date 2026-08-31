@@ -16,7 +16,7 @@ The engine has two test types: [Perft](https://chessprogramming.org/Perft) tests
 - Idempotency tests, which ensure that undoing moves always sets the board to the initial state
 - Pruning tests, which ensure that pruning the search tree does not result in worse moves
 
-Additionally, to test and compare different search algorithmss, there is a benchmark that compares the number of nodes explored by different methods, which can be run using `cargo bench`.
+Additionally, to test and compare different search algorithms, there is a benchmark that compares the number of nodes explored by different methods, which can be run using `cargo bench`.
 
 ## Sources
 

@@ -125,6 +125,29 @@ fn parse_square(fen: &str) -> Option<Square> {
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "move")
+        match self.promoted() {
+            Some(p) => write!(f, "{}{}{}", self.origin(), self.destination(), p),
+            None => write!(f, "{}{}", self.origin(), self.destination())
+        }
+    }
+}
+
+impl Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", (b'a' + self.column() as u8) as char, self.row() + 1)
+    }
+}
+
+impl Display for PieceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let character = match self {
+            PieceType::Pawn => 'p',
+            PieceType::Knight => 'n',
+            PieceType::Bishop => 'b',
+            PieceType::Rook => 'r',
+            PieceType::Queen => 'q',
+            PieceType::King => 'k',
+        };
+        write!(f, "{}", character)
     }
 }

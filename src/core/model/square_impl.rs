@@ -6,6 +6,18 @@ impl Square {
         Square(s)
     }
 
+    pub fn from(row: usize, column: usize) -> Square {
+        Square(row * 8 + column)
+    }
+
+    pub const fn valid(row: i32, column: i32) -> bool {
+        if row < 0 || row >= 8 || column < 0 || column >= 8 {
+            false
+        } else {
+            true
+        }
+    }
+
     pub fn bitboard(&self) -> BitBoard {
         BitBoard(1 << self.0)
     }
@@ -18,7 +30,7 @@ impl Square {
         self.0 / 8
     }
 
-    pub fn col(&self) -> usize {
+    pub fn column(&self) -> usize {
         self.0 % 8
     }
 }

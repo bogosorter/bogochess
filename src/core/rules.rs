@@ -15,25 +15,28 @@ impl GameState {
         let mut moves = Vec::with_capacity(220);
         self.pawn_pushes(&mut moves);
         self.knight_movements(&mut moves);
+        self.bishop_movements(&mut moves);
+        self.rook_movements(&mut moves);
+        self.queen_movements(&mut moves);
         self.king_movements(&mut moves);
 
         moves
     }
 
-    pub fn pawn_pushes(&mut self, moves: &mut Vec<Move>) {
-        let all = self.board.colors[0] & self.board.colors[1];
+    fn pawn_pushes(&mut self, moves: &mut Vec<Move>) {
+        let all = self.board.colors[0] | self.board.colors[1];
         let pawns = self.board.colors[self.current_player] & self.board.pieces[PieceType::Pawn];
 
         match self.current_player {
             Color::White => {
                 // Single pushes
-                let pushable = pawns & !all.shift_row_back(1);
+                let pushable = pawns & !all.shift_row_backward(1);
                 for position in pushable {
                     moves.push(Move::new(position, position.shift(8), MoveType::Normal, PieceType::Pawn, None, None, self.en_passant, self.castling));
                 }
 
                 // Double pushes
-                let double_pushable = pushable & !all.shift_row_back(2);
+                let double_pushable = pushable & BitBoard::row(1) & !all.shift_row_backward(2);
                 for position in double_pushable {
                     moves.push(Move::new(position, position.shift(16), MoveType::TwoSquare, PieceType::Pawn, None, None, self.en_passant, self.castling));
                 }
@@ -46,7 +49,7 @@ impl GameState {
                 }
 
                 // Double pushes
-                let double_pushable = pushable & !all.shift_row_forward(2);
+                let double_pushable = pushable & BitBoard::row(6) & !all.shift_row_forward(2);
                 for position in double_pushable {
                     moves.push(Move::new(position, position.shift(-16), MoveType::TwoSquare, PieceType::Pawn, None, None, self.en_passant, self.castling));
                 }
@@ -54,15 +57,27 @@ impl GameState {
         }
     }
 
-    pub fn knight_movements(&mut self, moves: &mut Vec<Move>) {
+    fn knight_movements(&mut self, moves: &mut Vec<Move>) {
         self.offset_movements(moves, PieceType::Knight, &KNIGHT_TABLE);
     }
 
-    pub fn king_movements(&mut self, moves: &mut Vec<Move>) {
+    fn bishop_movements(&mut self, moves: &mut Vec<Move>) {
+        self.sliding_movements(moves, PieceType::Bishop, &[(-1, -1), (-1, 1), (1, -1), (1, 1)]);
+    }
+
+    fn rook_movements(&mut self, moves: &mut Vec<Move>) {
+        self.sliding_movements(moves, PieceType::Rook, &[(-1, 0), (1, 0), (0, -1), (0, 1)]);
+    }
+
+    fn queen_movements(&mut self, moves: &mut Vec<Move>) {
+        self.sliding_movements(moves, PieceType::Queen, &[(-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 0), (1, 0), (0, -1), (0, 1)]);
+    }
+
+    fn king_movements(&mut self, moves: &mut Vec<Move>) {
         self.offset_movements(moves, PieceType::King, &KING_TABLE);
     }
 
-    pub fn offset_movements(&mut self, moves: &mut Vec<Move>, t: PieceType, table: &[BitBoard; 64]) {
+    fn offset_movements(&mut self, moves: &mut Vec<Move>, t: PieceType, table: &[BitBoard; 64]) {
         let pieces = self.board.colors[self.current_player] & self.board.pieces[t];
         let all = self.board.colors[Color::White] | self.board.colors[Color::Black];
 
@@ -76,6 +91,38 @@ impl GameState {
 
             for destination in non_captures {
                 moves.push(Move::new(origin, destination, MoveType::Normal, t, None, None, self.en_passant, self.castling));
+            }
+        }
+    }
+
+    fn sliding_movements(&mut self, moves: &mut Vec<Move>, t: PieceType, offsets: &[(i32, i32)]) {
+        let pieces = self.board.colors[self.current_player] & self.board.pieces[t];
+        let ours = self.board.colors[self.current_player];
+        let theirs = self.board.colors[!self.current_player];
+
+        for origin in pieces {
+            for offset in offsets {
+                let mut current_row;
+                let mut current_column;
+                let (row_offset, column_offset) = offset;
+                (current_row, current_column) = (origin.row() as i32 + row_offset, origin.column() as i32 + column_offset);
+
+                while Square::valid(current_row, current_column) {
+                    let destination = Square::from(current_row as usize, current_column as usize);
+
+                    if !(destination.bitboard() & ours).empty() {
+                        break;
+                    }
+
+                    if !(destination.bitboard() & theirs).empty() {
+                        moves.push(Move::new(origin, destination, MoveType::Normal, t, self.piece_at(destination), None, self.en_passant, self.castling));
+                        break;
+                    } else {
+                        moves.push(Move::new(origin, destination, MoveType::Normal, t, None, None, self.en_passant, self.castling));
+                    }
+
+                    (current_row, current_column) = (current_row + row_offset, current_column + column_offset);
+                }
             }
         }
     }
@@ -133,27 +180,27 @@ impl GameState {
     fn piece_at(&self, position: Square) -> Option<PieceType> {
         let mask = position.bitboard();
 
-        if self.board.pieces[PieceType::Pawn] & mask != BitBoard(0) {
+        if !(self.board.pieces[PieceType::Pawn] & mask).empty() {
             return Some(PieceType::Pawn);
         }
 
-        if self.board.pieces[PieceType::Knight] & mask != BitBoard(0) {
+        if !(self.board.pieces[PieceType::Knight] & mask).empty() {
             return Some(PieceType::Knight);
         }
 
-        if self.board.pieces[PieceType::Bishop] & mask != BitBoard(0) {
+        if !(self.board.pieces[PieceType::Bishop] & mask).empty() {
             return Some(PieceType::Bishop);
         }
 
-        if self.board.pieces[PieceType::Rook] & mask != BitBoard(0) {
+        if !(self.board.pieces[PieceType::Rook] & mask).empty() {
             return Some(PieceType::Rook);
         }
 
-        if self.board.pieces[PieceType::Queen] & mask != BitBoard(0) {
+        if !(self.board.pieces[PieceType::Queen] & mask).empty() {
             return Some(PieceType::Queen);
         }
 
-        if self.board.pieces[PieceType::King] & mask != BitBoard(0) {
+        if !(self.board.pieces[PieceType::King] & mask).empty() {
             return Some(PieceType::King);
         }
 
@@ -188,11 +235,7 @@ const fn offset_movements(offsets: &[(i32, i32); 8], position: usize) -> BitBoar
         let new_column = column + offsets[i].1;
         i += 1;
 
-        if new_row < 0 || 8 <= new_row {
-            continue;
-        }
-
-        if new_column < 0 || 8 <= new_column {
+        if !Square::valid(new_row, new_column) {
             continue;
         }
 

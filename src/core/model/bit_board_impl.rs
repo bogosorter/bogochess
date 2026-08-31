@@ -3,22 +3,30 @@ use crate::core::model::{BitBoard, Square};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
 impl BitBoard {
-    #[inline]
+    pub fn empty(&self) -> bool {
+        *self == BitBoard(0)
+    }
+
+    pub fn row(n: usize) -> BitBoard {
+        BitBoard(0xFF << (n * 8))
+    }
+
+    pub fn col(n: usize) -> BitBoard {
+        BitBoard(0x0101010101010101 << n)
+    }
+
     pub fn shift_row_forward(&self, amount: usize) -> BitBoard {
         BitBoard(self.0 << (amount * 8))
     }
 
-    #[inline]
-    pub fn shift_row_back(&self, amount: usize) -> BitBoard {
+    pub fn shift_row_backward(&self, amount: usize) -> BitBoard {
         BitBoard(self.0 >> (amount * 8))
     }
 
-    #[inline]
     pub fn shift_column_forward(&self, amount: i8) -> BitBoard {
         BitBoard(self.0 << amount)
     }
 
-    #[inline]
     pub fn shift_column_backward(&self, amount: i8) -> BitBoard {
         BitBoard(self.0 >> amount)
     }

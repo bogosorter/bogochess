@@ -77,7 +77,7 @@ impl TranspositionTable {
             ^ self.zobrist.castling[game_state.castling.bits() as usize];
 
         if let Some(square) = game_state.en_passant {
-            result ^= self.zobrist.en_passant[square.col()]
+            result ^= self.zobrist.en_passant[square.column()]
         }
 
         //for row in 0..8 {
