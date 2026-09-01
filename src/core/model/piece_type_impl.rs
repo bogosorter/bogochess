@@ -13,3 +13,10 @@ impl IndexMut<PieceType> for [BitBoard; 6] {
         &mut self[p as usize]
     }
 }
+
+impl Index<PieceType> for [[[f32; 64]; 2]; 6] {
+    type Output = [[f32; 64]; 2];
+    fn index(&self, p: PieceType) -> &[[f32; 64]; 2] {
+        &self[p as usize]
+    }
+}

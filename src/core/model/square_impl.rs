@@ -56,6 +56,13 @@ impl Index<Square> for [[u32; 64]; 64] {
     }
 }
 
+impl Index<Square> for [f32; 64] {
+    type Output = f32;
+    fn index(&self, index: Square) -> &f32 {
+        &self[index.0]
+    }
+}
+
 impl Index<Square> for [u32; 64] {
     type Output = u32;
     fn index(&self, index: Square) -> &u32 {

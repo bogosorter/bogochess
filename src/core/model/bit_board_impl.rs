@@ -7,6 +7,14 @@ impl BitBoard {
         *self == BitBoard(0)
     }
 
+    pub fn nonempty(&self) -> bool {
+        *self != BitBoard(0)
+    }
+
+    pub fn count(&self) -> u32 {
+        self.0.count_ones()
+    }
+
     pub fn row(n: usize) -> BitBoard {
         BitBoard(0xFF << (n * 8))
     }
