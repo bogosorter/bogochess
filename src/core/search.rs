@@ -126,7 +126,7 @@ pub fn alphabeta(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
     }
 
 
-    let mut moves = options.game_state.moves();
+    let mut moves = options.game_state.pseudo_legal_moves();
     if moves.is_empty() {
         // Checkmates will result in an evaluation with absolute value 1. If
         // there are no moves for reasons other than checkmates, this must be a
@@ -210,7 +210,7 @@ pub fn quiescent(options: &mut AlphaBetaOptions, depth: u32, mut alpha: f32, mut
         }
     }
 
-    let mut moves = options.game_state.moves();
+    let mut moves = options.game_state.pseudo_legal_moves();
     if moves.is_empty() {
         // Checkmates will result in an evaluation with absolute value 1. If
         // there are no moves for reasons other than checkmates, this must be a

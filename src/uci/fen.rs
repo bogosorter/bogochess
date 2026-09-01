@@ -36,7 +36,7 @@ pub fn parse_with_moves(fen: &str, moves: &[&str]) -> Option<GameState> {
     let mut game_state = parse(fen)?;
 
     for s in moves {
-        let m = game_state.moves().into_iter().find(|m| m.to_string() == *s)?;
+        let m = game_state.pseudo_legal_moves().into_iter().find(|m| m.to_string() == *s)?;
         game_state.apply(&m);
     }
 

@@ -12,7 +12,7 @@ fn perft_aux(game_state: &mut GameState, depth: u32, current_depth: u32) -> u32 
     }
 
     let mut result = 0;
-    for m in moves(game_state) {
+    for m in game_state.legal_moves() {
         game_state.apply(&m);
         let count = perft_aux(game_state, depth, current_depth + 1);
         result += count;
@@ -24,21 +24,4 @@ fn perft_aux(game_state: &mut GameState, depth: u32, current_depth: u32) -> u32 
     }
 
     result
-}
-
-// We define a custom moves function because we want to generate legal moves
-// instead of pseudo-legal moves
-pub fn moves(game_state: &mut GameState) -> Vec<Move> {
-    let moves = game_state.moves();
-
-    // Since the generated moves are pseudo-legal (see comment), we have to
-    // filter those that will result in a check
-    moves.into_iter().filter(|m| {
-        game_state.apply(m);
-        game_state.current_player = !game_state.current_player;
-        let in_check = game_state.in_check();
-        game_state.current_player = !game_state.current_player;
-        game_state.undo(m);
-        !in_check
-    }).collect()
 }

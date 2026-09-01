@@ -1,13 +1,12 @@
 use crate::core::model::*;
 
 impl GameState {
-    // This function generates pseudo-legal moves (where checks are allowed).
     // Pseudo-legal moves are used because ensuring that there is no check
     // requires another step of move generation to see if the king can be
     // captured, and that makes the process ~20x slower. Since the next move
     // will be a king capture anyway, which will give the current move a bad
     // evaluation, we can discard the check.
-    pub fn moves(&mut self) -> Vec<Move> {
+    pub fn pseudo_legal_moves(&mut self) -> Vec<Move> {
         if self.ended {
             return Vec::new();
         }
@@ -20,24 +19,32 @@ impl GameState {
         self.rook_movements(&mut moves);
         self.queen_movements(&mut moves);
         self.king_movements(&mut moves);
+        self.king_castling(&mut moves);
 
         moves
     }
 
+    pub fn legal_moves(&mut self) -> Vec<Move> {
+        self.pseudo_legal_moves().into_iter().filter(|m| {
+            self.apply(m);
+            self.current_player = !self.current_player;
+            let valid = !self.in_check();
+            self.current_player = !self.current_player;
+            self.undo(m);
+            valid
+        }).collect()
+    }
+
     pub fn in_check(&mut self) -> bool {
         let king = self.board.pieces[PieceType::King] & self.board.colors[self.current_player];
-
-        self.current_player = !self.current_player;
-        let result = self.under_attack(king);
-        self.current_player = !self.current_player;
-
-        result
+        self.attacked(king)
     }
 
     pub fn apply(&mut self, m: &Move) {
         let from = m.origin();
         let to = m.destination();
         let piece = m.piece();
+        let t = m.t();
 
         // Update the captured piece. This has to be done before the moving
         // piece is updated - if done after, and if the types of the pieces
@@ -46,6 +53,19 @@ impl GameState {
         if let Some(captured) = m.captured() {
             self.board.colors[!self.current_player] &= !to.bitboard();
             self.board.pieces[captured] &= !to.bitboard();
+
+            // Remove castling rights if the rook is captured. Note that we only
+            // check for the position, and not for the piece type, to save a
+            // couple operations: a piece being captured on that position will
+            // always mean that that castling is not possible, even if the piece
+            // being captured is not a rook.
+            match to {
+                Square(0) => self.castling.remove(Castling::WhiteQueen),
+                Square(7) => self.castling.remove(Castling::WhiteKing),
+                Square(56) => self.castling.remove(Castling::BlackQueen),
+                Square(63) => self.castling.remove(Castling::BlackKing),
+                _ => {}
+            }
         }
 
         // Update the piece that is moving
@@ -55,14 +75,14 @@ impl GameState {
         self.board.pieces[piece] |= to.bitboard();
 
         // Remove the pawn from its place when captured through en-passant
-        if m.t() == MoveType::EnPassant {
+        if t == MoveType::EnPassant {
             let square = Square::from(from.row(), to.column());
             self.board.colors[!self.current_player] &= !square.bitboard();
             self.board.pieces[PieceType::Pawn] &= !square.bitboard();
         }
 
         // Update the en-passant square
-        if m.t() == MoveType::TwoSquare {
+        if t == MoveType::TwoSquare {
             if self.current_player == Color::White {
                 self.en_passant = Some(m.origin().shift(8));
             } else {
@@ -70,6 +90,58 @@ impl GameState {
             }
         } else {
             self.en_passant = None;
+        }
+
+        // Also move the rook on castling
+        if t == MoveType::Castle {
+            match to {
+                // White queen-side
+                Square(2) => {
+                    self.board.colors[self.current_player] &= !Square(0).bitboard();
+                    self.board.pieces[PieceType::Rook] &= !Square(0).bitboard();
+                    self.board.colors[self.current_player] |= Square(3).bitboard();
+                    self.board.pieces[PieceType::Rook] |= Square(3).bitboard();
+                }
+                // White king-side
+                Square(6) => {
+                    self.board.colors[self.current_player] &= !Square(7).bitboard();
+                    self.board.pieces[PieceType::Rook] &= !Square(7).bitboard();
+                    self.board.colors[self.current_player] |= Square(5).bitboard();
+                    self.board.pieces[PieceType::Rook] |= Square(5).bitboard();
+                }
+                // Black queen-side
+                Square(58) => {
+                    self.board.colors[self.current_player] &= !Square(56).bitboard();
+                    self.board.pieces[PieceType::Rook] &= !Square(56).bitboard();
+                    self.board.colors[self.current_player] |= Square(59).bitboard();
+                    self.board.pieces[PieceType::Rook] |= Square(59).bitboard();
+                }
+                // Black king-side
+                Square(62) => {
+                    self.board.colors[self.current_player] &= !Square(63).bitboard();
+                    self.board.pieces[PieceType::Rook] &= !Square(63).bitboard();
+                    self.board.colors[self.current_player] |= Square(61).bitboard();
+                    self.board.pieces[PieceType::Rook] |= Square(61).bitboard();
+                }
+                _ => panic!("illegal destination for a castle")
+            }
+        }
+
+        // Remove castling rights when pieces move. Note that we only check for
+        // the position, and not for the piece type, to save a couple
+        // operations: a piece movig on that position will always mean that that
+        // castling is not possible, even if the piece being moved is not a
+        // rook.
+        match from {
+            // Rooks
+            Square(0) => self.castling.remove(Castling::WhiteQueen),
+            Square(7) => self.castling.remove(Castling::WhiteKing),
+            Square(56) => self.castling.remove(Castling::BlackQueen),
+            Square(63) => self.castling.remove(Castling::BlackKing),
+            // Kings
+            Square(4) => self.castling.remove(Castling::WhiteQueen | Castling::WhiteKing),
+            Square(60) => self.castling.remove(Castling::BlackQueen | Castling::BlackKing),
+            _ => {}
         }
 
         self.current_player = !self.current_player;
@@ -82,14 +154,53 @@ impl GameState {
         let from = m.origin();
         let to = m.destination();
         let piece = m.piece();
+        let t = m.t();
 
         self.current_player = !self.current_player;
+
+        // Restore castling
+        self.castling = m.previous_castling();
+
+        // Also move the rook on castling
+        if t == MoveType::Castle {
+            match to {
+                // White queen-side
+                Square(2) => {
+                    self.board.colors[self.current_player] |= Square(0).bitboard();
+                    self.board.pieces[PieceType::Rook] |= Square(0).bitboard();
+                    self.board.colors[self.current_player] &= !Square(3).bitboard();
+                    self.board.pieces[PieceType::Rook] &= !Square(3).bitboard();
+                }
+                // White king-side
+                Square(6) => {
+                    self.board.colors[self.current_player] |= Square(7).bitboard();
+                    self.board.pieces[PieceType::Rook] |= Square(7).bitboard();
+                    self.board.colors[self.current_player] &= !Square(5).bitboard();
+                    self.board.pieces[PieceType::Rook] &= !Square(5).bitboard();
+                }
+                // Black queen-side
+                Square(58) => {
+                    self.board.colors[self.current_player] |= Square(56).bitboard();
+                    self.board.pieces[PieceType::Rook] |= Square(56).bitboard();
+                    self.board.colors[self.current_player] &= !Square(59).bitboard();
+                    self.board.pieces[PieceType::Rook] &= !Square(59).bitboard();
+                }
+                // Black king-side
+                Square(62) => {
+                    self.board.colors[self.current_player] |= Square(63).bitboard();
+                    self.board.pieces[PieceType::Rook] |= Square(63).bitboard();
+                    self.board.colors[self.current_player] &= !Square(61).bitboard();
+                    self.board.pieces[PieceType::Rook] &= !Square(61).bitboard();
+                }
+                _ => panic!("illegal destination for a castle")
+            }
+        }
 
         // Restore en-passant
         self.en_passant = m.previous_en_passant();
 
         // Restore the pawn to its place when captured through en-passant
-        if m.t() == MoveType::EnPassant {
+        if t == MoveType::EnPassant {
             let square = Square::from(from.row(), to.column());
             self.board.colors[!self.current_player] |= square.bitboard();
             self.board.pieces[PieceType::Pawn] |= square.bitboard();
@@ -220,6 +331,50 @@ impl GameState {
         self.offset_movements(moves, PieceType::King, &KING_TABLE);
     }
 
+    fn king_castling(&mut self, moves: &mut Vec<Move>) {
+        if self.current_player == Color::White {
+            if self.castling.contains(Castling::WhiteQueen) {
+                let required_empty = BitBoard(0x7 << 1);
+                let not_in_check = BitBoard(0x7 << 2);
+                let all = self.board.colors[0] | self.board.colors[1];
+
+                if (required_empty & all).empty() && !self.attacked(not_in_check) {
+                    moves.push(Move::new(Square(4), Square(2), MoveType::Castle, PieceType::King, None, None, self.en_passant, self.castling));
+                }
+            }
+
+            if self.castling.contains(Castling::WhiteKing) {
+                let required_empty = BitBoard(0x3 << 5);
+                let not_in_check = BitBoard(0x7 << 4);
+                let all = self.board.colors[0] | self.board.colors[1];
+
+                if (required_empty & all).empty() && !self.attacked(not_in_check) {
+                    moves.push(Move::new(Square(4), Square(6), MoveType::Castle, PieceType::King, None, None, self.en_passant, self.castling));
+                }
+            }
+        } else {
+            if self.castling.contains(Castling::BlackQueen) {
+                let required_empty = BitBoard(0x7 << 57);
+                let not_in_check = BitBoard(0x7 << 58);
+                let all = self.board.colors[0] | self.board.colors[1];
+
+                if (required_empty & all).empty() && !self.attacked(not_in_check) {
+                    moves.push(Move::new(Square(60), Square(58), MoveType::Castle, PieceType::King, None, None, self.en_passant, self.castling));
+                }
+            }
+
+            if self.castling.contains(Castling::BlackKing) {
+                let required_empty = BitBoard(0x3 << 61);
+                let not_in_check = BitBoard(0x7 << 60);
+                let all = self.board.colors[0] | self.board.colors[1];
+
+                if (required_empty & all).empty() && !self.attacked(not_in_check) {
+                    moves.push(Move::new(Square(60), Square(62), MoveType::Castle, PieceType::King, None, None, self.en_passant, self.castling));
+                }
+            }
+        }
+    }
+
     fn offset_movements(&self, moves: &mut Vec<Move>, t: PieceType, table: &[BitBoard; 64]) {
         let pieces = self.board.colors[self.current_player] & self.board.pieces[t];
         let all = self.board.colors[Color::White] | self.board.colors[Color::Black];
@@ -270,19 +425,18 @@ impl GameState {
         }
     }
 
-    fn under_attack(&self, target: BitBoard) -> bool {
-        if
-            self.pawn_attack(target)
+    fn attacked(&mut self, target: BitBoard) -> bool {
+        self.current_player = !self.current_player;
+        let result
+             = self.pawn_attack(target)
             || self.knight_attack(target)
             || self.bishop_attack(target)
             || self.rook_attack(target)
             || self.queen_attack(target)
-            || self.king_attack(target)
-        {
-            true
-        } else {
-            false
-        }
+            || self.king_attack(target);
+        self.current_player = !self.current_player;
+
+        result
     }
 
     fn knight_attack(&self, target: BitBoard) -> bool {

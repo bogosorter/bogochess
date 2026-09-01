@@ -32,7 +32,7 @@ fn iterative_deepening(game_state: &mut GameState, depth: u32, state: &mut Engin
 
     for i in 1..=depth {
         let mut options = AlphaBetaOptions {
-            position,
+            game_state,
             max_depth: i,
             deadline,
             statistics: statistics,

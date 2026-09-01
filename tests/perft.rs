@@ -80,7 +80,6 @@ fn kiwipete_3() {
 }
 
 #[test]
-#[ignore]
 fn kiwipete_4() {
     test(KIWIPETE, 4, 4085603);
 }

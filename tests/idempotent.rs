@@ -16,7 +16,7 @@ fn idempotent(game_state: &mut GameState, depth: u32) {
         return;
     }
 
-    for m in game_state.moves() {
+    for m in game_state.legal_moves() {
         let before = game_state.clone();
         game_state.apply(&m);
         game_state.undo(&m);
@@ -43,7 +43,7 @@ fn initial() {
 
 #[test]
 fn kiwipete() {
-    test(KIWIPETE, 3);
+    test(KIWIPETE, 4);
 }
 
 #[test]
