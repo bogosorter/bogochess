@@ -20,3 +20,10 @@ impl Index<PieceType> for [[[f32; 64]; 2]; 6] {
         &self[p as usize]
     }
 }
+
+impl Index<PieceType> for [[[u64; 64]; 2]; 6] {
+    type Output = [[u64; 64]; 2];
+    fn index(&self, p: PieceType) -> &[[u64; 64]; 2] {
+        &self[p as usize]
+    }
+}

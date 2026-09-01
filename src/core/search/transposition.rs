@@ -1,4 +1,4 @@
-use crate::core::model::{GameState, Move};
+use crate::core::model::{GameState, Move, PieceType, Color};
 
 use rand::{RngExt, SeedableRng};
 use rand::rngs::StdRng;
@@ -21,7 +21,7 @@ impl TranspositionTable {
             items: 0,
             mask: size as u64 - 1,
             zobrist: ZobristValues {
-                piece_square: std::array::from_fn(|_| std::array::from_fn(|_| std::array::from_fn(|_| std::array::from_fn(|_| rng.random())))),
+                piece_square: std::array::from_fn(|_| std::array::from_fn(|_| std::array::from_fn(|_| rng.random()))),
                 current_player: std::array::from_fn(|_| rng.random()),
                 castling: std::array::from_fn(|_| rng.random()),
                 en_passant: std::array::from_fn(|_| rng.random())
@@ -80,13 +80,17 @@ impl TranspositionTable {
             result ^= self.zobrist.en_passant[square.column()]
         }
 
-        //for row in 0..8 {
-        //    for column in 0..8 {
-        //        if let Some(piece) = position.board[row][column] {
-        //            result ^= self.zobrist.piece_square[row][column][piece.t as usize][piece.color as usize];
-        //        }
-        //    }
-        //}
+        let white = game_state.board.colors[Color::White];
+        let types = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::Pawn];
+        for t in types {
+            for position in game_state.board.pieces[t] {
+                if (white & position.bitboard()).nonempty() {
+                    result ^= self.zobrist.piece_square[t][0][position];
+                } else {
+                    result ^= self.zobrist.piece_square[t][1][position];
+                }
+            }
+        }
 
         result
     }
@@ -98,7 +102,7 @@ impl TranspositionTable {
 
 #[derive(Debug)]
 pub struct ZobristValues {
-    pub piece_square: [[[[u64; 2]; 6]; 8]; 8],
+    pub piece_square: [[[u64; 64]; 2]; 6],
     pub current_player: [u64; 2],
     pub castling: [u64; 16],
     pub en_passant: [u64; 8]
