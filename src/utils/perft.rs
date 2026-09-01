@@ -1,4 +1,4 @@
-use crate::core::model::{GameState, Move};
+use crate::core::model::{GameState};
 
 pub fn perft(game_state: &mut GameState, depth: u32) -> u32 {
     let result = perft_aux(game_state, depth, 0);

@@ -72,7 +72,11 @@ impl GameState {
         self.board.colors[self.current_player] &= !from.bitboard();
         self.board.pieces[piece] &= !from.bitboard();
         self.board.colors[self.current_player] |= to.bitboard();
-        self.board.pieces[piece] |= to.bitboard();
+        if let Some(t) = m.promoted() {
+            self.board.pieces[t] |= to.bitboard();
+        } else {
+            self.board.pieces[piece] |= to.bitboard();
+        }
 
         // Remove the pawn from its place when captured through en-passant
         if t == MoveType::EnPassant {
@@ -208,7 +212,11 @@ impl GameState {
 
         // Update the piece that moved
         self.board.colors[self.current_player] &= !to.bitboard();
-        self.board.pieces[piece] &= !to.bitboard();
+        if let Some(t) = m.promoted() {
+            self.board.pieces[t] &= !to.bitboard();
+        } else {
+            self.board.pieces[piece] &= !to.bitboard();
+        }
         self.board.colors[self.current_player] |= from.bitboard();
         self.board.pieces[piece] |= from.bitboard();
 
@@ -226,9 +234,19 @@ impl GameState {
         match self.current_player {
             Color::White => {
                 // Single pushes
+
                 let pushable = pawns & !all.shift_row_backward(1);
-                for position in pushable {
+                let normal = pushable & !BitBoard::row(6);
+                let promoting = pushable & BitBoard::row(6);
+
+                for position in normal {
                     moves.push(Move::new(position, position.shift(8), MoveType::Normal, PieceType::Pawn, None, None, self.en_passant, self.castling));
+                }
+
+                for position in promoting {
+                    for t in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+                        moves.push(Move::new(position, position.shift(8), MoveType::Normal, PieceType::Pawn, None, Some(t), self.en_passant, self.castling));
+                    }
                 }
 
                 // Double pushes
@@ -239,9 +257,19 @@ impl GameState {
             },
             Color::Black => {
                 // Single pushes
+
                 let pushable = pawns & !all.shift_row_forward(1);
-                for position in pushable {
+                let normal = pushable & !BitBoard::row(1);
+                let promoting = pushable & BitBoard::row(1);
+
+                for position in normal {
                     moves.push(Move::new(position, position.shift(-8), MoveType::Normal, PieceType::Pawn, None, None, self.en_passant, self.castling));
+                }
+
+                for position in promoting {
+                    for t in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+                        moves.push(Move::new(position, position.shift(-8), MoveType::Normal, PieceType::Pawn, None, Some(t), self.en_passant, self.castling));
+                    }
                 }
 
                 // Double pushes
@@ -261,16 +289,32 @@ impl GameState {
             Color::White => {
                 // Captures to the left
                 let captures = pawns & (theirs.shift_row_backward(1).shift_column_forward(1) & !BitBoard::col(0));
-                for position in captures {
+                let normal = captures & !BitBoard::row(6);
+                let promoting = captures & BitBoard::row(6);
+                for position in normal {
                     let destination = position.shift(7);
                     moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
+                }
+                for position in promoting {
+                    let destination = position.shift(7);
+                    for t in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+                        moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), Some(t), self.en_passant, self.castling));
+                    }
                 }
 
                 // Captures to the right
                 let captures = pawns & (theirs.shift_row_backward(1).shift_column_backward(1) & !BitBoard::col(7));
-                for position in captures {
+                let normal = captures & !BitBoard::row(6);
+                let promoting = captures & BitBoard::row(6);
+                for position in normal {
                     let destination = position.shift(9);
                     moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
+                }
+                for position in promoting {
+                    let destination = position.shift(9);
+                    for t in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+                        moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), Some(t), self.en_passant, self.castling));
+                    }
                 }
 
                 if let Some(en_passant) = self.en_passant {
@@ -286,16 +330,32 @@ impl GameState {
             Color::Black => {
                 // Captures to the left
                 let captures = pawns & (theirs.shift_row_forward(1).shift_column_forward(1) & !BitBoard::col(0));
-                for position in captures {
+                let normal = captures & !BitBoard::row(1);
+                let promoting = captures & BitBoard::row(1);
+                for position in normal {
                     let destination = position.shift(-9);
                     moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
+                }
+                for position in promoting {
+                    let destination = position.shift(-9);
+                    for t in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+                        moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), Some(t), self.en_passant, self.castling));
+                    }
                 }
 
                 // Captures to the right
                 let captures = pawns & (theirs.shift_row_forward(1).shift_column_backward(1) & !BitBoard::col(7));
-                for position in captures {
+                let normal = captures & !BitBoard::row(1);
+                let promoting = captures & BitBoard::row(1);
+                for position in normal {
                     let destination = position.shift(-7);
                     moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
+                }
+                for position in promoting {
+                    let destination = position.shift(-7);
+                    for t in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+                        moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), Some(t), self.en_passant, self.castling));
+                    }
                 }
 
                 if let Some(en_passant) = self.en_passant {
