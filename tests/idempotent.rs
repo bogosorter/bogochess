@@ -12,7 +12,7 @@ fn test(game_state: &str, depth: u32) {
 }
 
 fn idempotent(game_state: &mut GameState, depth: u32) {
-    if depth == 0 || game_state.ended == false {
+    if depth == 0 || game_state.ended == true {
         return;
     }
 
@@ -38,7 +38,7 @@ const POSITION_6: &str = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPP
 
 #[test]
 fn initial() {
-    test(INITIAL_FEN, 4);
+    test(INITIAL_FEN, 5);
 }
 
 #[test]

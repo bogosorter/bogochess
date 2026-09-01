@@ -54,6 +54,24 @@ impl GameState {
         self.board.colors[self.current_player] |= to.bitboard();
         self.board.pieces[piece] |= to.bitboard();
 
+        // Remove the pawn from its place when captured through en-passant
+        if m.t() == MoveType::EnPassant {
+            let square = Square::from(from.row(), to.column());
+            self.board.colors[!self.current_player] &= !square.bitboard();
+            self.board.pieces[PieceType::Pawn] &= !square.bitboard();
+        }
+
+        // Update the en-passant square
+        if m.t() == MoveType::TwoSquare {
+            if self.current_player == Color::White {
+                self.en_passant = Some(m.origin().shift(8));
+            } else {
+                self.en_passant = Some(m.origin().shift(-8));
+            }
+        } else {
+            self.en_passant = None;
+        }
+
         self.current_player = !self.current_player;
     }
 
@@ -66,6 +84,16 @@ impl GameState {
         let piece = m.piece();
 
         self.current_player = !self.current_player;
+
+        // Restore en-passant
+        self.en_passant = m.previous_en_passant();
+
+        // Restore the pawn to its place when captured through en-passant
+        if m.t() == MoveType::EnPassant {
+            let square = Square::from(from.row(), to.column());
+            self.board.colors[!self.current_player] |= square.bitboard();
+            self.board.pieces[PieceType::Pawn] |= square.bitboard();
+        }
 
         // Update the piece that moved
         self.board.colors[self.current_player] &= !to.bitboard();
@@ -133,6 +161,16 @@ impl GameState {
                     let destination = position.shift(9);
                     moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
                 }
+
+                if let Some(en_passant) = self.en_passant {
+                    let back_left = en_passant.bitboard().shift_row_backward(1).shift_column_forward(1) & !BitBoard::col(0);
+                    let back_right = en_passant.bitboard().shift_row_backward(1).shift_column_backward(1) & !BitBoard::col(7);
+                    let capturers = pawns & (back_left | back_right);
+
+                    for capturer in capturers {
+                        moves.push(Move::new(capturer, en_passant, MoveType::EnPassant, PieceType::Pawn, None, None, self.en_passant, self.castling));
+                    }
+                }
             },
             Color::Black => {
                 // Captures to the left
@@ -147,6 +185,16 @@ impl GameState {
                 for position in captures {
                     let destination = position.shift(-7);
                     moves.push(Move::new(position, destination, MoveType::Normal, PieceType::Pawn, self.piece_at(destination), None, self.en_passant, self.castling));
+                }
+
+                if let Some(en_passant) = self.en_passant {
+                    let forward_left = en_passant.bitboard().shift_row_forward(1).shift_column_forward(1) & !BitBoard::col(0);
+                    let forward_right = en_passant.bitboard().shift_row_forward(1).shift_column_backward(1) & !BitBoard::col(7);
+                    let capturers = pawns & (forward_left | forward_right);
+
+                    for capturer in capturers {
+                        moves.push(Move::new(capturer, en_passant, MoveType::EnPassant, PieceType::Pawn, None, None, self.en_passant, self.castling));
+                    }
                 }
             }
         }

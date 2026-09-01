@@ -7,11 +7,14 @@ use crate::core::model::*;
 // - piece (3 bits)
 // - captured (3 bits)
 // - promoted (3 bits)
-// - previous en-passant (4 bits)
+// - previous en-passant (5 bits)
 // - previous castling right (4 bits)
+// Moves that are en-passant should not include the captured pawn as a captured piece
 impl Move {
     pub fn new(from: Square, to: Square, t: MoveType, piece: PieceType, captured: Option<PieceType>, promoted: Option<PieceType>, previous_en_passant: Option<Square>, previous_castling: Castling) -> Move {
-        let mut bits = from.0 as u32 | (to.0 as u32) << 6 | (t as u32) << 12 | (piece as u32) << 14 | (previous_castling.bits() as u32) << 27;
+        debug_assert!(!(t == MoveType::EnPassant && !captured.is_none()));
+
+        let mut bits = from.0 as u32 | (to.0 as u32) << 6 | (t as u32) << 12 | (piece as u32) << 14 | (previous_castling.bits() as u32) << 28;
 
         if let Some(c) = captured {
             bits |= (c as u32) << 17;
@@ -26,9 +29,13 @@ impl Move {
         }
 
         if let Some(ep) = previous_en_passant {
-            bits |= (ep.0 as u32) << 23;
+            if ep.row() == 2 {
+                bits |= (ep.column() as u32) << 23;
+            } else {
+                bits |= (0x8 | (ep.column() as u32)) << 23;
+            }
         } else {
-            bits |= 0xF << 23;
+            bits |= 0x1F << 23;
         }
 
         Move(bits)
@@ -72,17 +79,21 @@ impl Move {
         }
     }
 
-    pub fn en_passant(&self) -> Option<PieceType> {
-        let bits = ((self.0 >> 23) & 0xF) as usize;
+    pub fn previous_en_passant(&self) -> Option<Square> {
+        let bits = ((self.0 >> 23) & 0x1F) as usize;
 
-        if bits != 0xF {
-            Some([PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King][bits & 0x7])
+        if bits != 0x1F {
+            if bits & 0x8 == 0 {
+                Some(Square(16 + (bits & 0x7)))
+            } else {
+                Some(Square(40 + (bits & 0x7)))
+            }
         } else {
             None
         }
     }
 
     pub fn previous_castling(&self) -> Castling {
-        Castling::from_bits(((self.0 >> 27) & 0xF) as u8).unwrap()
+        Castling::from_bits(((self.0 >> 28) & 0xF) as u8).unwrap()
     }
 }
