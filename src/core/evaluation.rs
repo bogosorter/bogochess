@@ -1,4 +1,4 @@
-use crate::core::model::{GameState, Move, Color, PieceType};
+use crate::core::model::{GameState, Square, Move, Color, PieceType};
 use std::cmp::Ordering;
 
 impl GameState {
@@ -16,23 +16,27 @@ impl GameState {
         }
 
         let white = self.board.colors[Color::White];
-        let black = self.board.colors[Color::White];
+        let black = self.board.colors[Color::Black];
         let mut material: f32 = 0.0;
 
         let mut material_score = 0.0;
         let mut development_score: f32 = 0.0;
         let mut endgame_score: f32 = 0.0;
 
-        let types = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::Pawn];
+        let types = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King];
         for t in types {
             for position in self.board.pieces[t] {
                 let s = t.value();
                 material += s;
 
                 if (white & position.bitboard()).nonempty() {
+                    // For historical reasons, the bonus tables consider row 0
+                    // to be the top row. Since we'll have to invert the row of
+                    // black or white pieces either way, I left it that way.
+                    let inverted = Square::from(7 - position.row(), position.column());
                     material_score += s;
-                    development_score += BONUS_TABLES[t][0][position];
-                    endgame_score += BONUS_TABLES[t][1][position];
+                    development_score += BONUS_TABLES[t][0][inverted];
+                    endgame_score += BONUS_TABLES[t][1][inverted];
                 } else {
                     material_score -= s;
                     development_score -= BONUS_TABLES[t][0][position];
@@ -77,9 +81,9 @@ impl PieceType {
         match self {
             PieceType::Pawn => 1.0,
             PieceType::Knight => 3.0,
-            PieceType::Bishop => 3.2,
+            PieceType::Bishop => 3.0,
             PieceType::Rook => 5.0,
-            PieceType::Queen => 10.0,
+            PieceType::Queen => 9.0,
             PieceType::King => 0.0
         }
     }
@@ -216,8 +220,8 @@ const BONUS_TABLES: [[[f32; 64]; 2]; 6]  = [
             -0.3, -0.1, 0.2, 0.3, 0.3, 0.2, -0.1, -0.3,
             -0.3, -0.1, 0.3, 0.4, 0.4, 0.3, -0.1, -0.3,
             -0.3, -0.1, 0.3, 0.4, 0.4, 0.3, -0.1, -0.3,
-            -0.3, -0.1, 0.2, 0.3, 0.3, -0.2, -0.1, -0.3,
-            -0.3, -0.2, 0.0, 0.0, 0.0, 0.0, -0.0, -0.3,
+            -0.3, -0.1, 0.2, 0.3, 0.3, 0.2, -0.1, -0.3,
+            -0.3, -0.2, 0.0, 0.0, 0.0, 0.0, -0.2, -0.3,
             -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.3, -0.05
         ]
     ]

@@ -81,7 +81,7 @@ impl TranspositionTable {
         }
 
         let white = game_state.board.colors[Color::White];
-        let types = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::Pawn];
+        let types = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King];
         for t in types {
             for position in game_state.board.pieces[t] {
                 if (white & position.bitboard()).nonempty() {
