@@ -54,6 +54,10 @@ impl GameState {
             self.board.colors[!self.current_player] &= !to.bitboard();
             self.board.pieces[captured] &= !to.bitboard();
 
+            if captured == PieceType::King {
+                self.ended = true;
+            }
+
             // Remove castling rights if the rook is captured. Note that we only
             // check for the position, and not for the piece type, to save a
             // couple operations: a piece being captured on that position will
@@ -224,6 +228,10 @@ impl GameState {
         if let Some(captured) = m.captured() {
             self.board.colors[!self.current_player] |= to.bitboard();
             self.board.pieces[captured] |= to.bitboard();
+
+            if captured == PieceType::King {
+                self.ended = false;
+            }
         }
     }
 
